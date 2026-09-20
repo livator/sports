@@ -21,11 +21,13 @@ export interface LeagueZones {
 export interface League {
   slug: LeagueSlug;
   name: string;
+  /** Compact label for chips and tight columns, e.g. "PL". */
+  shortName: string;
   country: string;
   /** ISO 3166-1 alpha-2 */
   countryCode: string;
-  /** Emoji flag for lightweight rendering without image assets. */
-  flag: string;
+  /** League logo, when the data source publishes one. */
+  logoUrl?: string;
   /** football-data.org competition code */
   externalCode: string;
   teamCount: number;
@@ -94,7 +96,22 @@ export interface Match {
   halfTimeScore?: Score;
   /** Only present while live. */
   minute?: number;
+  /** Provider-formatted clock while live, e.g. "45'+2'". Preferred over `minute` for display. */
+  displayClock?: string;
+  /** Goals and red cards, in match order. Absent when the provider has no event data. */
+  events?: MatchEvent[];
   venue?: string;
+}
+
+export type MatchEventType = 'goal' | 'penalty-goal' | 'own-goal' | 'red-card';
+
+export interface MatchEvent {
+  type: MatchEventType;
+  /** Display minute, e.g. "57'" or "90'+3'". */
+  minute: string;
+  /** Team credited with the event (for own goals: the team that benefits). */
+  teamId: string;
+  player: string;
 }
 
 export interface Player {
@@ -110,7 +127,8 @@ export interface Scorer {
   team: Team;
   goals: number;
   assists: number;
-  penalties: number;
+  /** Not every source reports penalties. */
+  penalties?: number;
   playedMatches: number;
 }
 
@@ -118,6 +136,99 @@ export interface Season {
   label: string;
   startDate: string;
   endDate: string;
-  currentMatchday: number;
+  /** Not every source has a matchday concept. */
+  currentMatchday?: number;
   totalMatchdays: number;
+}
+
+/* ---------- Detail views (match, team, player) ---------- */
+
+export interface MatchStat {
+  key: string;
+  label: string;
+  home: number;
+  away: number;
+  /** Present when the values are percentages. */
+  unit?: '%';
+}
+
+export type TimelineKind =
+  'goal' | 'penalty-goal' | 'own-goal' | 'yellow-card' | 'red-card' | 'substitution';
+
+export interface TimelineEvent {
+  /** Display minute, e.g. "57'" or "90'+3'". */
+  minute: string;
+  side: 'home' | 'away';
+  kind: TimelineKind;
+  /** Main actor: scorer, booked player, or player coming on. */
+  player: string;
+  /** Secondary actor: for substitutions, the player going off. */
+  detail?: string;
+}
+
+export interface PastMeeting {
+  id: string;
+  date: string;
+  homeTeam: Team;
+  awayTeam: Team;
+  score: Score;
+}
+
+export interface MatchDetail {
+  match: Match;
+  attendance?: number;
+  stats: MatchStat[];
+  timeline: TimelineEvent[];
+  headToHead: {
+    /** Source-provided one-liner, e.g. "LIV leads series 4-1". */
+    summary?: string;
+    meetings: PastMeeting[];
+  };
+}
+
+export interface SquadPlayer {
+  id: string;
+  name: string;
+  number?: string;
+  /** Broad role: Goalkeeper, Defender, Midfielder, Forward. */
+  position?: string;
+  age?: number;
+  nationality?: string;
+  appearances: number;
+  goals: number;
+  assists: number;
+}
+
+export interface TeamDetail {
+  team: Team;
+  leagueSlug: LeagueSlug;
+  /** e.g. "1st in English Premier League" */
+  standingSummary?: string;
+  venue?: string;
+  /** Played matches this season, most recent first. */
+  results: Match[];
+  /** Upcoming matches, soonest first. */
+  fixtures: Match[];
+  squad: SquadPlayer[];
+}
+
+export interface PlayerMatchLog {
+  matchId: string;
+  date?: string;
+  opponent?: string;
+  goals: number;
+  assists: number;
+}
+
+export interface PlayerDetail {
+  player: SquadPlayer & {
+    headshotUrl?: string;
+    height?: string;
+    dateOfBirth?: string;
+    shots?: number;
+  };
+  team?: Team;
+  leagueSlug: LeagueSlug;
+  /** This season's appearances in date order. */
+  log: PlayerMatchLog[];
 }

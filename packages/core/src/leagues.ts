@@ -8,13 +8,16 @@ const standardZones = {
   relegationPlayoff: 0,
 } as const;
 
+const leagueLogo = (id: number) => `https://a.espncdn.com/i/leaguelogos/soccer/500/${id}.png`;
+
 export const LEAGUES: readonly League[] = [
   {
     slug: 'premier-league',
     name: 'Premier League',
+    shortName: 'PL',
     country: 'England',
     countryCode: 'GB',
-    flag: '\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}',
+    logoUrl: leagueLogo(23),
     externalCode: 'PL',
     teamCount: 20,
     colors: { primary: '#3d195b', secondary: '#00ff85' },
@@ -23,9 +26,10 @@ export const LEAGUES: readonly League[] = [
   {
     slug: 'la-liga',
     name: 'LaLiga',
+    shortName: 'LaLiga',
     country: 'Spain',
     countryCode: 'ES',
-    flag: '\u{1F1EA}\u{1F1F8}',
+    logoUrl: leagueLogo(15),
     externalCode: 'PD',
     teamCount: 20,
     colors: { primary: '#ee8707', secondary: '#ffffff' },
@@ -34,9 +38,10 @@ export const LEAGUES: readonly League[] = [
   {
     slug: 'serie-a',
     name: 'Serie A',
+    shortName: 'Serie A',
     country: 'Italy',
     countryCode: 'IT',
-    flag: '\u{1F1EE}\u{1F1F9}',
+    logoUrl: leagueLogo(12),
     externalCode: 'SA',
     teamCount: 20,
     colors: { primary: '#024494', secondary: '#1de9b6' },
@@ -45,9 +50,10 @@ export const LEAGUES: readonly League[] = [
   {
     slug: 'bundesliga',
     name: 'Bundesliga',
+    shortName: 'Bundesliga',
     country: 'Germany',
     countryCode: 'DE',
-    flag: '\u{1F1E9}\u{1F1EA}',
+    logoUrl: leagueLogo(10),
     externalCode: 'BL1',
     teamCount: 18,
     colors: { primary: '#d20515', secondary: '#ffffff' },
@@ -56,9 +62,10 @@ export const LEAGUES: readonly League[] = [
   {
     slug: 'ligue-1',
     name: 'Ligue 1',
+    shortName: 'Ligue 1',
     country: 'France',
     countryCode: 'FR',
-    flag: '\u{1F1EB}\u{1F1F7}',
+    logoUrl: leagueLogo(9),
     externalCode: 'FL1',
     teamCount: 18,
     colors: { primary: '#091c3e', secondary: '#dae025' },

@@ -1,20 +1,20 @@
-export function SiteFooter() {
+import { useTranslations } from 'next-intl';
+
+export function SiteFooter({ source }: { source: string }) {
+  const t = useTranslations('footer');
+  const credit =
+    source === 'espn'
+      ? t('sourceEspn')
+      : source === 'football-data.org'
+        ? t('sourceFootballData')
+        : t('sourceMock');
   return (
-    <footer className="border-t border-line py-8 text-sm text-ink-muted">
-      <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <p>Pitchside · Football data for Europe’s top 5 leagues.</p>
-        <p className="text-ink-faint">
-          Data via{' '}
-          <a
-            className="underline decoration-line-strong underline-offset-4 hover:text-ink"
-            href="https://www.football-data.org"
-            target="_blank"
-            rel="noreferrer"
-          >
-            football-data.org
-          </a>{' '}
-          when configured.
-        </p>
+    <footer className="border-t-2">
+      <div className="mx-auto flex max-w-[1240px] flex-wrap justify-between gap-3 px-[clamp(16px,4vw,48px)] py-6 text-[13px] text-ink-2">
+        <span>{t('tagline')}</span>
+        <span>
+          {credit} · {t('localTimes')}
+        </span>
       </div>
     </footer>
   );

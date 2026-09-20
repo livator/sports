@@ -1,5 +1,20 @@
-import type { League, LeagueSlug, Match, Scorer, Season, Standings } from '../../types';
-import { ProviderError, type MatchQuery, type SportsDataProvider } from '../types';
+import type {
+  League,
+  LeagueSlug,
+  Match,
+  MatchDetail,
+  PlayerDetail,
+  Scorer,
+  Season,
+  Standings,
+  TeamDetail,
+} from '../../types';
+import {
+  ProviderError,
+  type MatchQuery,
+  type SportsDataProvider,
+  type StandingsOptions,
+} from '../types';
 
 export interface HttpProviderOptions {
   /** Base URL of the sports web app, e.g. https://sports.example.com */
@@ -45,8 +60,10 @@ export class HttpProvider implements SportsDataProvider {
     return this.get(`/leagues/${league}/season`);
   }
 
-  getStandings(league: LeagueSlug): Promise<Standings> {
-    return this.get(`/leagues/${league}/standings`);
+  getStandings(league: LeagueSlug, options: StandingsOptions = {}): Promise<Standings> {
+    return this.get(`/leagues/${league}/standings`, {
+      form: options.includeForm === false ? 0 : undefined,
+    });
   }
 
   getMatches(league: LeagueSlug, query: MatchQuery = {}): Promise<Match[]> {
@@ -63,5 +80,17 @@ export class HttpProvider implements SportsDataProvider {
 
   getMatchesByDate(date: string): Promise<Match[]> {
     return this.get('/matches', { date });
+  }
+
+  getMatch(league: LeagueSlug, matchId: string): Promise<MatchDetail> {
+    return this.get(`/leagues/${league}/matches/${encodeURIComponent(matchId)}`);
+  }
+
+  getTeam(league: LeagueSlug, teamId: string): Promise<TeamDetail> {
+    return this.get(`/leagues/${league}/teams/${encodeURIComponent(teamId)}`);
+  }
+
+  getPlayer(league: LeagueSlug, playerId: string): Promise<PlayerDetail> {
+    return this.get(`/leagues/${league}/players/${encodeURIComponent(playerId)}`);
   }
 }

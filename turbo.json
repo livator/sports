@@ -1,7 +1,22 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalEnv": ["FOOTBALL_DATA_API_KEY", "NEXT_PUBLIC_APP_URL"],
+  "globalEnv": [
+    "SPORTS_DATA_PROVIDER",
+    "FOOTBALL_DATA_API_KEY",
+    "NEXT_PUBLIC_APP_URL",
+    "BETTER_AUTH_SECRET",
+    "BETTER_AUTH_URL",
+    "DATABASE_URL",
+    "DATABASE_AUTH_TOKEN",
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_SECURE",
+    "SMTP_USER",
+    "SMTP_PASS",
+    "EMAIL_FROM",
+    "EMAIL_DEV_OUTBOX"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

@@ -1,0 +1,24 @@
+{
+  "name": "@sports/i18n",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Locales and message catalogs (ICU format). Shared by web and mobile.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./messages/*.json": "./src/messages/*.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src",
+    "clean": "rimraf .turbo"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "eslint": "^9.20.0",
+    "typescript-eslint": "^8.25.0",
+    "vitest": "^3.0.0"
+  }
+}

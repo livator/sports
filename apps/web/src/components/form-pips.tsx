@@ -1,28 +1,32 @@
 import type { FormResult } from '@sports/core';
-import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 const styles: Record<FormResult, string> = {
-  W: 'bg-win/90 text-black',
-  D: 'bg-draw/40 text-ink',
-  L: 'bg-loss/90 text-white',
+  W: 'bg-ink text-ground',
+  D: 'bg-transparent text-ink',
+  L: 'bg-ground text-neutral-500',
 };
+const wordKey = { W: 'formWon', D: 'formDrew', L: 'formLost' } as const;
+const letterKey = { W: 'won', D: 'drawn', L: 'lost' } as const;
 
-export function FormPips({ form, className }: { form: FormResult[]; className?: string }) {
+/** Recent results, oldest first. Win is solid, draw is outlined, loss is faded. */
+export function FormPips({ form, size = 'sm' }: { form: FormResult[]; size?: 'sm' | 'lg' }) {
+  const t = useTranslations('table');
+  if (form.length === 0) return <span className="text-ink-3">–</span>;
+  const box = size === 'lg' ? 'h-9 w-7 text-xs' : 'size-[18px] text-[9px]';
   return (
     <span
-      className={cn('inline-flex items-center gap-1', className)}
-      aria-label={`Form: ${form.join(' ')}`}
+      className={`inline-flex ${size === 'lg' ? 'gap-1' : 'gap-[3px]'}`}
+      aria-label={t('formLabel', { results: form.map((r) => t(wordKey[r])).join(', ') })}
     >
-      {form.map((r, i) => (
+      {form.map((result, i) => (
         <span
           key={i}
-          className={cn(
-            'inline-flex size-5 items-center justify-center rounded-md text-[10px] font-bold',
-            styles[r],
-            i === form.length - 1 && 'ring-2 ring-white/20',
-          )}
+          aria-hidden
+          className={`grid place-items-center border border-ink font-extrabold ${box} ${styles[result]}`}
         >
-          {r}
+          {/* The same one-letter codes as the table's W / D / L column heads. */}
+          {t(letterKey[result])}
         </span>
       ))}
     </span>

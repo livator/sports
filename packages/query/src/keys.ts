@@ -11,5 +11,8 @@ export const sportsKeys = {
     [...sportsKeys.league(slug), 'matches', query] as const,
   scorers: (slug: LeagueSlug, limit: number) =>
     [...sportsKeys.league(slug), 'scorers', limit] as const,
+  match: (slug: LeagueSlug, id: string) => [...sportsKeys.league(slug), 'match', id] as const,
+  team: (slug: LeagueSlug, id: string) => [...sportsKeys.league(slug), 'team', id] as const,
+  player: (slug: LeagueSlug, id: string) => [...sportsKeys.league(slug), 'player', id] as const,
   matchesByDate: (date: string) => [...sportsKeys.all, 'matches-by-date', date] as const,
 };

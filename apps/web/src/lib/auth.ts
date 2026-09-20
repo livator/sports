@@ -1,0 +1,96 @@
+import 'server-only';
+
+import { isLocale, type Locale } from '@sports/i18n';
+import { betterAuth } from 'better-auth';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { nextCookies } from 'better-auth/next-js';
+import { getDb, schema } from '@/db';
+import { sendVerificationEmail } from './email';
+
+/** Pulls the UI locale out of the page the user will land on after verifying (e.g. "/ro/match/..."). */
+function localeFromVerificationUrl(url: string): Locale | undefined {
+  try {
+    const callback = new URL(url).searchParams.get('callbackURL') ?? '';
+    const first = new URL(callback, 'http://local').pathname.split('/')[1];
+    return isLocale(first) ? first : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const explicitUrl = (process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL)?.trim();
+const isProduction = process.env.NODE_ENV === 'production';
+
+const createAuth = () =>
+  betterAuth({
+    appName: 'Pitchside',
+    // Left unset in development so any localhost port works; the request's own origin is used.
+    ...(explicitUrl ? { baseURL: explicitUrl } : {}),
+    trustedOrigins: [
+      ...(explicitUrl ? [explicitUrl] : []),
+      ...(isProduction ? [] : ['http://localhost:*', 'http://127.0.0.1:*']),
+    ],
+    database: drizzleAdapter(getDb(), {
+      provider: 'sqlite',
+      schema: {
+        user: schema.user,
+        session: schema.session,
+        account: schema.account,
+        verification: schema.verification,
+      },
+    }),
+    emailAndPassword: {
+      enabled: true,
+      // An account cannot sign in, and so cannot comment, until the address is confirmed.
+      requireEmailVerification: true,
+      autoSignIn: false,
+      minPasswordLength: 8,
+      maxPasswordLength: 128,
+    },
+    emailVerification: {
+      sendOnSignUp: true,
+      // Logging in with an unconfirmed address sends a fresh link instead of a dead end.
+      sendOnSignIn: true,
+      autoSignInAfterVerification: true,
+      expiresIn: 60 * 60 * 24,
+      sendVerificationEmail: async ({ user, url }) => {
+        const locale = localeFromVerificationUrl(url);
+        await sendVerificationEmail({
+          to: user.email,
+          name: user.name,
+          url,
+          ...(locale ? { locale } : {}),
+        });
+      },
+    },
+    session: {
+      expiresIn: 60 * 60 * 24 * 30,
+      updateAge: 60 * 60 * 24,
+    },
+    rateLimit: {
+      enabled: true,
+      window: 60,
+      max: 60,
+      customRules: {
+        '/sign-in/email': { window: 60, max: 8 },
+        '/sign-up/email': { window: 60 * 10, max: 8 },
+        '/send-verification-email': { window: 60, max: 3 },
+      },
+    },
+    advanced: { cookiePrefix: 'pitchside' },
+    // Must stay last: lets server actions and route handlers set auth cookies.
+    plugins: [nextCookies()],
+  });
+
+let instance: ReturnType<typeof createAuth> | undefined;
+
+/**
+ * Built on first use rather than at import, so `next build` needs neither a database nor
+ * BETTER_AUTH_SECRET. At runtime in production a missing secret still fails loudly.
+ */
+export function getAuth() {
+  instance ??= createAuth();
+  return instance;
+}
+
+export type Session = ReturnType<typeof createAuth>['$Infer']['Session'];

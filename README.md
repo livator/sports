@@ -1,23 +1,41 @@
 # Pitchside
 
-Live scores, standings, fixtures and top scorers for Europe's top 5 football leagues
-(Premier League, LaLiga, Serie A, Bundesliga, Ligue 1).
+Live scores, results, tables and players for Europe's top 5 football leagues
+(Premier League, LaLiga, Serie A, Bundesliga, Ligue 1), with real data and real club crests.
+Available in English, Russian and Romanian, with accounts and match comments.
 
-Built as a monorepo so the domain logic and data layer are shared between the web app today
-and native mobile apps later.
+Built as a monorepo so the domain logic, data layer and translations are shared between the
+web app today and native mobile apps later.
 
 ## Structure
 
 ```
 sports/
 ├── apps/
-│   └── web/            Next.js 15 app (App Router, Tailwind v4). Also serves /api/v1 for mobile.
+│   └── web/            Next.js 15 app (App Router, Tailwind v4). Also serves the APIs for mobile.
 ├── packages/
-│   ├── core/           Pure TypeScript: domain models, league config, standings math, data providers.
-│   └── query/          React hooks (TanStack Query) over core providers. Works in React DOM and React Native.
+│   ├── core/           Pure TypeScript: domain models, league config, data providers, comments client.
+│   ├── query/          React hooks (TanStack Query) over core providers. Works in React DOM and React Native.
+│   └── i18n/           Locales and message catalogs (ICU). en is the source; ru and ro must match it.
+├── design/             Source design exported from Claude Design (not formatted or linted).
 ├── turbo.json          Task pipeline (build / dev / lint / typecheck / test)
 └── tsconfig.base.json  Strict shared compiler settings
 ```
+
+### Screens
+
+| Route                      | Screen                                                                |
+| -------------------------- | --------------------------------------------------------------------- |
+| `/`                        | Matches for a day: strip, league filter, grouped rows, table, scorers |
+| `/match/:league/:id`       | Match: score, timeline, head to head, team stats, comments            |
+| `/tables/:league`          | Full league table with form and qualification zones                   |
+| `/tables/:league/fixtures` | A league's fixtures and results by month                              |
+| `/team/:league/:id`        | Team: season numbers, form, fixtures and results, squad               |
+| `/players`                 | Top scorers, across all leagues or one                                |
+| `/player/:league/:id`      | Player: season numbers, goals by match, profile                       |
+
+English is unprefixed. Russian lives under `/ru`, Romanian under `/ro` (for example
+`/ro/tables/la-liga`). `/?date=YYYY-MM-DD&league=serie-a` selects the day and the filter.
 
 ### How the layers fit together
 
@@ -26,25 +44,28 @@ sports/
         │  apps/web (Next.js)  │        │  apps/mobile (later) │
         │  server components   │        │  Expo / React Native │
         └──────────┬───────────┘        └──────────┬───────────┘
-                   │ direct call                    │ HTTP (/api/v1)
+                   │ direct call                    │ HTTP (/api/v1, /api/auth)
                    ▼                                ▼
         ┌──────────────────────┐        ┌──────────────────────┐
         │  @sports/query       │◄───────┤  @sports/query       │  shared hooks + cache keys
         └──────────┬───────────┘        └──────────┬───────────┘
                    ▼                                ▼
-        ┌─────────────────────────────────────────────────────┐
-        │  @sports/core  · SportsDataProvider interface        │
-        │    MockProvider · FootballDataProvider · HttpProvider│
-        └─────────────────────────────────────────────────────┘
+        ┌──────────────────────────────────────────────────────┐
+        │  @sports/core  · SportsDataProvider · CommentsClient  │
+        │  @sports/i18n  · en / ru / ro message catalogs        │
+        └──────────────────────────────────────────────────────┘
 ```
 
-- **`SportsDataProvider`** is the single seam to the outside world. Every screen is written
-  against it, never against a concrete API.
-- **`MockProvider`** simulates a full deterministic season (double round-robin, Poisson-scored
-  results biased by club strength, live matches during kick-off windows). No network needed.
-- **`FootballDataProvider`** adapts [football-data.org](https://www.football-data.org) v4.
-- **`HttpProvider`** talks to the web app's own `/api/v1` routes. Mobile apps use this so API
-  keys never ship in a client bundle and the server can cache upstream calls.
+`SportsDataProvider` is the single seam to sports data. Lists (matches, tables, scorers) are
+required. Detail views (`getMatch`, `getTeam`, `getPlayer`) are optional, and pages show a notice
+when the configured source cannot serve them.
+
+| Provider               | Data                                                                | Details | Key |
+| ---------------------- | ------------------------------------------------------------------- | ------- | --- |
+| `EspnProvider`         | Real. Scores, live clocks, goalscorers, cards, tables, crests.      | Yes     | No  |
+| `FootballDataProvider` | Real. [football-data.org](https://www.football-data.org) v4.        | No      | Yes |
+| `MockProvider`         | Simulated, deterministic season. For offline work and tests only.   | No      | No  |
+| `HttpProvider`         | Whatever the web app serves at `/api/v1`. This is what mobile uses. | Yes     | No  |
 
 ## Getting started
 
@@ -55,49 +76,153 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-Without configuration the app runs on demo data and shows a "Demo data" badge.
-For real data, register for a free key and create `.env` in `apps/web/`:
+Nothing else is needed locally:
 
-```bash
-cp .env.example apps/web/.env
-# then set FOOTBALL_DATA_API_KEY=...
-```
+- **Sports data** is real, from ESPN, with no key.
+- **The database** is a SQLite file at `apps/web/data/pitchside.db`. It is created and migrated
+  automatically the first time an account or comment route is used.
+- **Verification emails** are written to `apps/web/data/outbox/` when no SMTP server is
+  configured, and the path is logged. Open the newest file and follow the link inside.
+- **`apps/web/.env.local`** holds a generated `BETTER_AUTH_SECRET`. It is git-ignored. Create one
+  on a new machine with the command in `.env.example`.
+
+See `.env.example` for every setting.
+
+## Languages
+
+`next-intl` with locale-prefixed routes. A first-time visitor is sent to the language their
+browser prefers; the header switch keeps the current page, day and filters.
+
+- Catalogs live in `packages/i18n/src/messages/{en,ru,ro}.json`, in ICU format with proper
+  plural rules (Russian `one / few / many`, Romanian `one / few / other`).
+- `en.json` is the source of truth and provides the TypeScript types, so a misspelled key is a
+  compile error. A test fails if `ru` or `ro` is missing a key or uses different placeholders.
+- Always import `Link`, `useRouter`, `usePathname` and `redirect` from `@/i18n/navigation`,
+  never from `next/link` or `next/navigation`, so links keep the language.
+- Club, league and player names are proper nouns from the data source and stay as they are.
+- Archivo has no Cyrillic, so Inter's Cyrillic subset sits behind it in the font stack. Latin
+  text and figures stay in Archivo in every language.
+- To add a language: add it to `LOCALES`, `LOCALE_NAMES` and `LOCALE_TAGS`, add its JSON file
+  and its case in `loadMessages`. The tests tell you what is missing.
+
+"Today" follows the viewer, not the server: the browser stores its timezone in a `tz` cookie
+and the server uses it, so the day labels are right just after midnight in any timezone.
+
+## Accounts and comments
+
+[better-auth](https://www.better-auth.com) with email and password, on SQLite through Drizzle
+and libSQL.
+
+- **Email verification is required.** A new account cannot log in, and so cannot comment, until
+  the emailed link is opened. The link signs the user in and returns them to the page they were
+  on. Logging in with an unconfirmed address sends a fresh link. The email is written in the
+  language of the page the user signed up from.
+- **Anyone can read comments. Only signed-in users can post.** A guest can still type: pressing
+  "Post" opens the dialog with "Log in" and "Create account". The draft is kept in the browser,
+  is posted automatically after logging in, and is still in the box after the email
+  verification round trip.
+- Authors can delete their own comments. There is no moderation tooling yet.
+- Limits: 1000 characters per comment, 5 comments per minute per account, and better-auth's
+  rate limits on sign-in, sign-up and resending the link. State-changing requests from another
+  origin are refused.
+- Followed clubs are a per-browser preference in `localStorage` and need no account.
+- Schema: `apps/web/src/db/schema.ts`. After changing it run
+  `npm run db:generate -w @sports/web`. Migrations in `apps/web/drizzle/` apply at first use.
+
+### Going to production
+
+Set these, or accounts will not work:
+
+| Variable                | Why                                                                               |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_APP_URL`   | Base URL for email links, auth redirects, trusted origins, the sitemap.           |
+| `BETTER_AUTH_SECRET`    | Signs sessions. Auth routes fail loudly without it.                               |
+| `DATABASE_URL` (+token) | A hosted libSQL/Turso database. A local file does not survive serverless deploys. |
+| `SMTP_*`, `EMAIL_FROM`  | Real email delivery. Sign-up refuses to run without it in production.             |
+
+The sign-in rate limiter keeps its counters in memory, which is per server instance. Behind
+several instances, give better-auth a shared store.
+
+Not built yet: password reset, changing email or display name, comment moderation and reporting.
 
 ## Scripts
 
-| Command             | What it does                             |
-| ------------------- | ---------------------------------------- |
-| `npm run dev`       | Start every app in dev mode (Turbopack)  |
-| `npm run build`     | Production build of every package        |
-| `npm run lint`      | ESLint across the workspace              |
-| `npm run typecheck` | `tsc --noEmit` across the workspace      |
-| `npm run test`      | Vitest (core domain logic and providers) |
-| `npm run format`    | Prettier (with Tailwind class sorting)   |
+| Command                              | What it does                                 |
+| ------------------------------------ | -------------------------------------------- |
+| `npm run dev`                        | Start every app in dev mode (Turbopack)      |
+| `npm run build`                      | Production build of every package            |
+| `npm run lint`                       | ESLint across the workspace                  |
+| `npm run typecheck`                  | `tsc --noEmit` across the workspace          |
+| `npm run test`                       | Vitest: core logic, providers, i18n catalogs |
+| `npm run format`                     | Prettier (with Tailwind class sorting)       |
+| `npm run db:generate -w @sports/web` | Generate a migration after a schema change   |
 
 CI (`.github/workflows/ci.yml`) runs format check, lint, typecheck, tests and build on every push
-and pull request.
+and pull request. Tests never touch the network, and the build needs no secret and no database:
+both are opened on first use, not at import.
 
-## Public API (consumed by mobile)
+## APIs (consumed by mobile)
 
-All responses are JSON and cached at the edge for 60 s (20 s for live matches).
+Sports data responses are cached at the edge for 60 s (20 s for the daily scoreboard).
 
-| Route                                 | Query params                       |
-| ------------------------------------- | ---------------------------------- |
-| `GET /api/v1/leagues`                 |                                    |
-| `GET /api/v1/leagues/:slug/season`    |                                    |
-| `GET /api/v1/leagues/:slug/standings` |                                    |
-| `GET /api/v1/leagues/:slug/matches`   | `matchday`, `dateFrom`, `dateTo`   |
-| `GET /api/v1/leagues/:slug/scorers`   | `limit` (max 50)                   |
-| `GET /api/v1/matches`                 | `date` (YYYY-MM-DD, default today) |
+| Route                                             | Notes                                          |
+| ------------------------------------------------- | ---------------------------------------------- |
+| `GET /api/v1/leagues`                             |                                                |
+| `GET /api/v1/leagues/:slug/season`                |                                                |
+| `GET /api/v1/leagues/:slug/standings`             | `form=0` to skip recent form                   |
+| `GET /api/v1/leagues/:slug/matches`               | `dateFrom`, `dateTo`, `matchday`               |
+| `GET /api/v1/leagues/:slug/matches/:id`           |                                                |
+| `GET /api/v1/leagues/:slug/matches/:id/comments`  | Public. Newest first, never cached             |
+| `POST /api/v1/leagues/:slug/matches/:id/comments` | Signed in. `{ "body": "..." }`                 |
+| `DELETE /api/v1/comments/:id`                     | Signed in, own comments only                   |
+| `GET /api/v1/leagues/:slug/teams/:id`             |                                                |
+| `GET /api/v1/leagues/:slug/players/:id`           |                                                |
+| `GET /api/v1/leagues/:slug/scorers`               | `limit` (max 50)                               |
+| `GET /api/v1/matches`                             | `date` (YYYY-MM-DD, default today)             |
+| `/api/auth/*`                                     | better-auth: sign-up, sign-in, verify, session |
 
-Slugs: `premier-league`, `la-liga`, `serie-a`, `bundesliga`, `ligue-1`.
+Slugs: `premier-league`, `la-liga`, `serie-a`, `bundesliga`, `ligue-1`. Detail routes answer `501`
+when the configured source cannot serve them. Comment errors carry a machine-readable code
+(`unauthorized`, `empty`, `tooLong`, `tooFast`, `notFound`) so each client shows its own translation.
+
+## About the ESPN source
+
+`EspnProvider` reads ESPN's public site API, which is undocumented and comes with no stability
+guarantee, so treat it as a convenience for development and personal use.
+
+- `dates` accepts a single day, a month or a year, but not ranges. Ranges are fetched per month.
+- There is no matchday concept, so fixtures navigate by month and match groups show a count.
+- The standings feed has no form column. Form is derived from the last two months of results.
+- The scorers feed has only full club names, so clubs are matched to the table for short names.
+- Player profiles live on a second host (`site.web.api.espn.com`). Most players have no headshot.
+- Crests and league logos are served from ESPN's CDN. They are trademarks of the clubs and
+  leagues. Check licensing before running this commercially, and swap the provider if needed.
+
+## Design
+
+The interface implements `design/Pitchside.html`, built on the "Modernist" design system:
+one typeface (Archivo), a warm grey ground `#f3f2f2`, near-black ink `#201e1d`, one red-orange
+accent `#ec3013`, square corners, and structure from 2px and 1px dividers. Tokens and the
+`.btn`, `.input` and `.table` classes live in `apps/web/src/app/globals.css`.
+
+Deliberate differences from the prototype:
+
+- **Real crests and live data** replace the abbreviation tiles and generated season.
+- **Goalscorers on hover.** Hovering or focusing a match row opens a panel with scorers and
+  sendings-off. Clicking the row opens the match page.
+- **Real accounts** replace the prototype's name-only local profile. Comments are real and
+  stored. Match ratings and comment votes are not built.
+- **No Champions League filter.** Only the five domestic leagues are configured.
+- **Match groups show a match count**, because the data source has no matchday numbers.
 
 ## Adding the mobile app
 
-1. `npx create-expo-app apps/mobile` and add `"@sports/core": "*"`, `"@sports/query": "*"`.
-2. Wrap the root in `<SportsProvider provider={new HttpProvider({ baseUrl: 'https://your-deployment' })}>`.
-3. Use `useStandings`, `useMatches`, `useTopScorers`, `useMatchesByDate` from `@sports/query`
-   with native UI. Query keys are shared, so caching semantics are identical to the web.
+1. `npx create-expo-app apps/mobile` and add `@sports/core`, `@sports/query`, `@sports/i18n`.
+2. Wrap the root in `<SportsProvider provider={new HttpProvider({ baseUrl })}>`.
+3. Use the hooks from `@sports/query` with native UI. Query keys are shared with the web.
+4. Load the same catalogs with `loadMessages(locale)` into any ICU-capable i18n library.
+5. For accounts use better-auth's Expo client against `/api/auth`, and pass its authenticated
+   `fetch` to `new CommentsClient({ baseUrl, fetch })`.
 
 ## Conventions
 
@@ -105,4 +230,7 @@ Slugs: `premier-league`, `la-liga`, `serie-a`, `bundesliga`, `ligue-1`.
 - Internal packages export TypeScript source directly (`exports` → `src/index.ts`); Next.js
   transpiles them via `transpilePackages`, Metro will do the same for mobile.
 - Server components call the provider directly; client components go through `@sports/query`.
-- Keep `packages/core` free of React and DOM imports so it stays portable.
+- Pages wrap provider calls in `safe()`, so an upstream failure degrades one section, not the route.
+- URL state over client state: language, day, league filter, month and match tab are all links.
+- No user-facing string in a component: everything goes through `@sports/i18n`.
+- Keep `packages/core` and `packages/i18n` free of React and DOM imports so they stay portable.

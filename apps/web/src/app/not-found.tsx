@@ -1,17 +1,25 @@
-import Link from 'next/link';
-
-export default function NotFound() {
+/**
+ * Only reached for requests the locale middleware does not handle (for example a missing
+ * file with an extension). Pages under a locale use app/[locale]/not-found.tsx instead.
+ */
+export default function GlobalNotFound() {
   return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
-      <p className="font-display text-7xl font-bold text-ink-faint">404</p>
-      <h1 className="mt-2 font-display text-2xl font-semibold">Offside</h1>
-      <p className="mt-2 text-ink-muted">That page isn’t on the team sheet.</p>
-      <Link
-        href="/"
-        className="mt-6 rounded-full bg-pitch-500 px-5 py-2 text-sm font-semibold text-black transition hover:bg-pitch-400"
+    <html lang="en">
+      <body
+        style={{
+          fontFamily: 'system-ui, sans-serif',
+          padding: 32,
+          background: '#f3f2f2',
+          color: '#201e1d',
+        }}
       >
-        Back to kick-off
-      </Link>
-    </div>
+        <h1 style={{ fontSize: 32, margin: 0 }}>404</h1>
+        <p>
+          {/* A full page load is intended: this page renders outside the localized app shell. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          Nothing here. <a href="/">Go to today’s matches</a>.
+        </p>
+      </body>
+    </html>
   );
 }

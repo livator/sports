@@ -85,3 +85,30 @@ export function computeStandings(teams: readonly Team[], matches: readonly Match
 
   return rows.map((row, i) => ({ position: i + 1, ...row }));
 }
+
+/**
+ * Last `count` results per team id from finished matches, most recent last.
+ * Useful for sources whose standings feed carries no form column.
+ */
+export function computeForm(matches: readonly Match[], count = 5): Map<string, FormResult[]> {
+  const form = new Map<string, FormResult[]>();
+  const push = (teamId: string, result: FormResult) => {
+    const list = form.get(teamId) ?? [];
+    list.push(result);
+    form.set(teamId, list);
+  };
+
+  const finished = matches
+    .filter((m) => m.status === 'finished' && m.score.home !== null && m.score.away !== null)
+    .sort((a, b) => a.kickoff.localeCompare(b.kickoff));
+
+  for (const m of finished) {
+    const hg = m.score.home as number;
+    const ag = m.score.away as number;
+    push(m.homeTeam.id, hg > ag ? 'W' : hg < ag ? 'L' : 'D');
+    push(m.awayTeam.id, ag > hg ? 'W' : ag < hg ? 'L' : 'D');
+  }
+
+  for (const [teamId, results] of form) form.set(teamId, results.slice(-count));
+  return form;
+}

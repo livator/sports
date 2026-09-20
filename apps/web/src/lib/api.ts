@@ -28,7 +28,8 @@ export async function handle(fn: () => Promise<NextResponse>): Promise<NextRespo
     return await fn();
   } catch (err) {
     if (err instanceof ProviderError) {
-      const status = err.status && err.status >= 400 && err.status < 600 ? 502 : 500;
+      // A missing match, team or player is the caller's 404; other upstream failures are a bad gateway.
+      const status = err.status === 404 ? 404 : err.status && err.status >= 400 ? 502 : 500;
       return error(err.message, status);
     }
     console.error(err);

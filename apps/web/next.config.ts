@@ -1,11 +1,29 @@
 import type { NextConfig } from 'next';
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@sports/core', '@sports/query'],
+  transpilePackages: ['@sports/core', '@sports/query', '@sports/i18n'],
+  // Native bindings: load at runtime instead of bundling.
+  serverExternalPackages: ['@libsql/client', 'libsql'],
   images: {
-    remotePatterns: [{ protocol: 'https', hostname: 'crests.football-data.org' }],
+    remotePatterns: [
+      { protocol: 'https', hostname: 'a.espncdn.com' },
+      { protocol: 'https', hostname: 'crests.football-data.org' },
+    ],
+    // Crests never change at a given URL; keep optimised copies for a month.
+    minimumCacheTTL: 60 * 60 * 24 * 30,
+  },
+  // The first version of the site had one section per league.
+  async redirects() {
+    return [
+      { source: '/leagues/:slug', destination: '/tables/:slug', permanent: true },
+      { source: '/leagues/:slug/fixtures', destination: '/tables/:slug/fixtures', permanent: true },
+      { source: '/leagues/:slug/scorers', destination: '/players?league=:slug', permanent: true },
+    ];
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);
