@@ -82,6 +82,16 @@ function codeOf(slug: LeagueSlug): string {
   return code;
 }
 
+/**
+ * ESPN ids are plain numbers. Anything else cannot exist, so it is a 404 without asking: a
+ * mistyped address should not cost a request, and ESPN can take very long to reject one.
+ */
+const ESPN_ID = /^\d{1,12}$/;
+
+function checkId(kind: string, id: string): void {
+  if (!ESPN_ID.test(id)) throw new ProviderError(`Invalid ${kind} id`, 404);
+}
+
 const TRAILING_SLASH = /\/$/;
 
 /** How long the list of European national teams is reused. */
@@ -337,6 +347,7 @@ export class EspnProvider implements SportsDataProvider {
 
   async getMatch(slug: LeagueSlug, matchId: string): Promise<MatchDetail> {
     getLeague(slug);
+    checkId('match', matchId);
     const data = await this.request<EspnSummary>(
       `/apis/site/v2/sports/soccer/${codeOf(slug)}/summary`,
       { event: matchId },
@@ -348,6 +359,7 @@ export class EspnProvider implements SportsDataProvider {
 
   async getTeam(slug: LeagueSlug, teamId: string): Promise<TeamDetail> {
     getLeague(slug);
+    checkId('team', teamId);
     const base = `/apis/site/v2/sports/soccer/${codeOf(slug)}/teams/${encodeURIComponent(teamId)}`;
     type TeamResponse = {
       team?: EspnTeam & { standingSummary?: string; franchise?: { venue?: { fullName?: string } } };
@@ -398,6 +410,7 @@ export class EspnProvider implements SportsDataProvider {
 
   async getPlayer(slug: LeagueSlug, playerId: string): Promise<PlayerDetail> {
     getLeague(slug);
+    checkId('player', playerId);
     const base = `/apis/common/v3/sports/soccer/${codeOf(slug)}/athletes/${encodeURIComponent(playerId)}`;
     const [profile, log] = await Promise.all([
       this.request<EspnAthleteProfile>(base, {}, this.webBaseUrl),
@@ -436,7 +449,7 @@ export class EspnProvider implements SportsDataProvider {
   }
 
   async getArticle(articleId: string): Promise<NewsArticle> {
-    if (!/^\d{1,12}$/.test(articleId)) throw new ProviderError(`Invalid article id`, 404);
+    checkId('article', articleId);
     const data = await this.request<EspnNewsHeadlines>(
       `/v1/sports/news/${articleId}`,
       {},

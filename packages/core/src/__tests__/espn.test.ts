@@ -323,6 +323,20 @@ describe('EspnProvider', () => {
     await expect(provider.getMatches('serie-a', day)).rejects.toThrow();
     await expect(provider.getMatches('serie-a', day)).resolves.toEqual([]);
   });
+
+  it('answers 404 for an id that cannot exist, without asking ESPN', async () => {
+    let calls = 0;
+    const fakeFetch = (async () => {
+      calls++;
+      return new Response('{}');
+    }) as typeof fetch;
+    const provider = new EspnProvider({ fetch: fakeFetch });
+
+    await expect(provider.getMatch('premier-league', 'abc')).rejects.toMatchObject({ status: 404 });
+    await expect(provider.getTeam('premier-league', '../x')).rejects.toMatchObject({ status: 404 });
+    await expect(provider.getPlayer('premier-league', '')).rejects.toMatchObject({ status: 404 });
+    expect(calls).toBe(0);
+  });
 });
 
 describe('helpers', () => {

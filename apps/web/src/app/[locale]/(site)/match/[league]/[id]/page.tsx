@@ -24,7 +24,7 @@ import { BackLink } from '@/components/page-header';
 import { Link } from '@/i18n/navigation';
 import { countComments, isValidThreadId } from '@/lib/comments';
 import { competitionName } from '@/lib/competitions';
-import { getProvider, safe } from '@/lib/provider';
+import { getProvider, safe, safeOrNotFound } from '@/lib/provider';
 import { scoreText, statusLabel, statusTone, teamHref, toneClass } from '@/lib/view';
 
 type Props = {
@@ -39,7 +39,7 @@ async function load(leagueSlug: string, id: string): Promise<MatchDetail | null 
   if (!league || !isValidThreadId(id)) notFound();
   const provider = getProvider();
   if (!provider.getMatch) return 'unsupported';
-  return safe(provider.getMatch(league.slug, id));
+  return safeOrNotFound(provider.getMatch(league.slug, id));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

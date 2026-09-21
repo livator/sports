@@ -240,7 +240,8 @@
     "errorKicker": "Ceva nu a mers",
     "errorTitle": "Joc oprit",
     "errorText": "Pagina nu s-a încărcat. De obicei este ceva temporar.",
-    "retry": "Încearcă din nou"
+    "retry": "Încearcă din nou",
+    "notFoundHint": "Sau continuă de aici"
   },
   "auth": {
     "logIn": "Autentificare",

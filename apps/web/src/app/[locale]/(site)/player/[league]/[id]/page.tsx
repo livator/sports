@@ -9,7 +9,7 @@ import { DataNotice } from '@/components/data-notice';
 import { BackLink } from '@/components/page-header';
 import { Link } from '@/i18n/navigation';
 import { competitionName } from '@/lib/competitions';
-import { getProvider, safe } from '@/lib/provider';
+import { getProvider, safeOrNotFound } from '@/lib/provider';
 import { seasonLabelFor, teamHref } from '@/lib/view';
 
 type Props = { params: Promise<{ locale: Locale; league: string; id: string }> };
@@ -19,7 +19,7 @@ async function load(leagueSlug: string, id: string): Promise<PlayerDetail | null
   if (!league) notFound();
   const provider = getProvider();
   if (!provider.getPlayer) return 'unsupported';
-  return safe(provider.getPlayer(league.slug, id));
+  return safeOrNotFound(provider.getPlayer(league.slug, id));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

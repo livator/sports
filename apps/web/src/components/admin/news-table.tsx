@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { deleteArticleAction } from '@/app/admin/actions';
 import type { ArticleState } from '@/lib/articles';
 import { AdminTime } from './admin-time';
+import { ConfirmDialog } from './confirm-dialog';
 import { FilterChips } from './filter-chips';
 import { STATE_LABEL, STATE_TAG, type ArticleListItem } from './shared';
 
@@ -31,15 +32,25 @@ export function NewsTable({ articles }: { articles: ArticleListItem[] }) {
         a.author.toLowerCase().includes(needle)),
   );
 
-  function remove(article: ArticleListItem) {
-    const warning =
-      article.comments > 0
-        ? `Delete “${article.title}” and its ${article.comments} comments? This cannot be undone.`
-        : `Delete “${article.title}”? This cannot be undone.`;
-    if (!window.confirm(warning)) return;
+  // The article waiting for a yes or no, if any.
+  const [doomed, setDoomed] = useState<ArticleListItem | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+
+  function confirmDelete() {
+    if (!doomed) return;
+    setFailed(null);
     startTransition(async () => {
-      await deleteArticleAction(article.id);
-      router.refresh();
+      try {
+        const result = await deleteArticleAction(doomed.id);
+        if (!result.ok) {
+          setFailed('The article was not deleted. Try again.');
+          return;
+        }
+        setDoomed(null);
+        router.refresh();
+      } catch {
+        setFailed('The article was not deleted. Check your connection and try again.');
+      }
     });
   }
 
@@ -116,7 +127,8 @@ export function NewsTable({ articles }: { articles: ArticleListItem[] }) {
                       disabled={pending}
                       onClick={(e) => {
                         e.stopPropagation();
-                        remove(a);
+                        setFailed(null);
+                        setDoomed(a);
                       }}
                     >
                       Delete
@@ -128,6 +140,34 @@ export function NewsTable({ articles }: { articles: ArticleListItem[] }) {
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={doomed !== null}
+        title="Delete this article?"
+        confirmLabel="Delete article"
+        busyLabel="Deleting…"
+        busy={pending}
+        error={failed}
+        onConfirm={confirmDelete}
+        onCancel={() => setDoomed(null)}
+      >
+        {doomed && (
+          <>
+            <p className="font-semibold text-ink">“{doomed.title}”</p>
+            <p>
+              {doomed.state === 'published'
+                ? 'It is live on the site and will disappear from it at once.'
+                : doomed.state === 'scheduled'
+                  ? 'It is scheduled and will never go live.'
+                  : 'It is a draft that readers have not seen.'}{' '}
+              {doomed.comments > 0
+                ? `Its ${doomed.comments} ${doomed.comments === 1 ? 'comment goes' : 'comments go'} with it, and so does an uploaded photo.`
+                : 'An uploaded photo is deleted with it.'}{' '}
+              This cannot be undone.
+            </p>
+          </>
+        )}
+      </ConfirmDialog>
     </>
   );
 }

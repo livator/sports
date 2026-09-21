@@ -6,6 +6,7 @@ import { setSuspendedAction } from '@/app/admin/actions';
 import type { AdminUser, AdminUserComment } from '@/lib/admin-data';
 import { initialsOf } from '@/lib/admin-format';
 import { AdminTime } from './admin-time';
+import { ConfirmDialog } from './confirm-dialog';
 import { FilterChips } from './filter-chips';
 
 type Filter = 'all' | 'active' | 'new' | 'suspended';
@@ -64,19 +65,27 @@ export function UsersTable({
     });
   };
 
-  function toggleSuspended(user: AdminUser) {
-    if (
-      !user.suspended &&
-      !window.confirm(`Suspend ${user.name}? They are signed out everywhere and cannot log in.`)
-    ) {
-      return;
-    }
+  // Suspending asks first; lifting a suspension does not, since it takes nothing away.
+  const [asking, setAsking] = useState<AdminUser | null>(null);
+
+  function setSuspended(user: AdminUser, suspended: boolean) {
+    setProblem(null);
     startTransition(async () => {
-      const result = await setSuspendedAction(user.id, !user.suspended);
-      if (!result.ok) setProblem(result.message);
-      router.refresh();
+      try {
+        const result = await setSuspendedAction(user.id, suspended);
+        if (!result.ok) {
+          setProblem(result.message);
+          return;
+        }
+        setAsking(null);
+        router.refresh();
+      } catch {
+        setProblem('That did not work. Check your connection and try again.');
+      }
     });
   }
+  const toggleSuspended = (user: AdminUser) =>
+    user.suspended ? setSuspended(user, false) : setAsking(user);
 
   return (
     <>
@@ -242,6 +251,29 @@ export function UsersTable({
           </aside>
         )}
       </div>
+
+      <ConfirmDialog
+        open={asking !== null}
+        title="Suspend this user?"
+        confirmLabel="Suspend user"
+        busyLabel="Suspending…"
+        busy={pending}
+        error={asking ? problem : null}
+        onConfirm={() => asking && setSuspended(asking, true)}
+        onCancel={() => setAsking(null)}
+      >
+        {asking && (
+          <>
+            <p className="font-semibold text-ink">
+              {asking.name} · {asking.email}
+            </p>
+            <p>
+              They are signed out everywhere at once and cannot log in again until the suspension is
+              lifted. Their comments stay on the site.
+            </p>
+          </>
+        )}
+      </ConfirmDialog>
     </>
   );
 }

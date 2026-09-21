@@ -240,7 +240,8 @@
     "errorKicker": "Something went wrong",
     "errorTitle": "Stoppage",
     "errorText": "This page failed to load. It’s usually temporary.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "notFoundHint": "Or pick up from here"
   },
   "auth": {
     "logIn": "Log in",

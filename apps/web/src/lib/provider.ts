@@ -5,9 +5,11 @@ import {
   EspnProvider,
   FootballDataProvider,
   MockProvider,
+  ProviderError,
   TheSportsDbProvider,
   type SportsDataProvider,
 } from '@sports/core';
+import { notFound } from 'next/navigation';
 import { env } from './env';
 import { tsdbFileStore } from './tsdb-store';
 
@@ -95,6 +97,23 @@ export function isDemoData(): boolean {
  * Runs a provider call and returns null instead of throwing, so one upstream
  * hiccup degrades a section of the page rather than the whole route.
  */
+/**
+ * Like `safe`, for a single match, team or player named in the address. "The source has no
+ * such thing" (or rejects the id as malformed) is a missing page, so it becomes a real 404;
+ * anything else is a hiccup and still degrades to a notice on the page.
+ */
+export async function safeOrNotFound<T>(promise: Promise<T>): Promise<T | null> {
+  try {
+    return await promise;
+  } catch (error) {
+    if (error instanceof ProviderError && (error.status === 404 || error.status === 400)) {
+      notFound();
+    }
+    console.error('[data]', error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
 export async function safe<T>(promise: Promise<T>): Promise<T | null> {
   try {
     return await promise;

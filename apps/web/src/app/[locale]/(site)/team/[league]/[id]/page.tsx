@@ -12,7 +12,7 @@ import { NewsList } from '@/components/news-list';
 import { BackLink } from '@/components/page-header';
 import { Link } from '@/i18n/navigation';
 import { competitionName } from '@/lib/competitions';
-import { getProvider, safe } from '@/lib/provider';
+import { getProvider, safe, safeOrNotFound } from '@/lib/provider';
 import { matchHref, playerHref, scoreText, sideWeight } from '@/lib/view';
 
 type Props = { params: Promise<{ locale: Locale; league: string; id: string }> };
@@ -22,7 +22,7 @@ async function load(leagueSlug: string, id: string): Promise<TeamDetail | null |
   if (!league) notFound();
   const provider = getProvider();
   if (!provider.getTeam) return 'unsupported';
-  return safe(provider.getTeam(league.slug, id));
+  return safeOrNotFound(provider.getTeam(league.slug, id));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
