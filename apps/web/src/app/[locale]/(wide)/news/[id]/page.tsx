@@ -14,6 +14,9 @@ import { countComments } from '@/lib/comments';
 import { getAnyArticle, getNewsFeed, isArticleId } from '@/lib/news';
 import { safe } from '@/lib/provider';
 
+/** Running text of an article: large and open, but never wider than a comfortable line. */
+const BODY_TEXT = 'mb-5 max-w-[720px] text-[19px] leading-[1.65]';
+
 /** Headlines in the column beside the article. */
 const MORE_NEWS = 7;
 
@@ -95,7 +98,7 @@ export default async function ArticlePage({ params }: Props) {
             {article.title}
           </h1>
           {article.summary && (
-            <p className="mb-7 max-w-[760px] text-[19px] leading-[1.45] text-[color-mix(in_srgb,var(--color-ink)_80%,transparent)]">
+            <p className="mb-7 max-w-[760px] text-[22px] leading-[1.4] text-[color-mix(in_srgb,var(--color-ink)_80%,transparent)]">
               {article.summary}
             </p>
           )}
@@ -123,19 +126,26 @@ export default async function ArticlePage({ params }: Props) {
             <div className={article.imageUrl ? '' : 'pt-6'}>
               <ViewBeacon articleId={article.id} />
               {paragraphs.map((p, i) => (
-                <p
-                  key={i}
-                  className="mb-4 max-w-[720px] text-[17px] leading-[1.6] whitespace-pre-line"
-                >
+                <p key={i} className={`${BODY_TEXT} whitespace-pre-line`}>
                   {p}
                 </p>
               ))}
             </div>
           ) : (
-            /* The full text belongs to the publisher, so this page links to it instead of copying it. */
-            <div
-              className={`flex flex-wrap items-center justify-between gap-4 ${article.imageUrl ? '' : 'pt-6'}`}
-            >
+            /*
+             * The full text belongs to the publisher. The page shows its opening lines, which
+             * the data source has already cut to a short excerpt, and sends the reader on.
+             */
+            <div className={article.imageUrl ? '' : 'pt-6'}>
+              {(article.excerpt ?? []).map((p, i) => (
+                <p key={i} className={BODY_TEXT}>
+                  {p}
+                </p>
+              ))}
+            </div>
+          )}
+          {!own && (
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t pt-5">
               <p className="max-w-[440px] text-[13px] leading-normal text-ink-2">
                 {t('sourceNote', { source: article.sourceName })}
               </p>

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { CommentsClient, threadKey } from '../comments';
 import { EspnProvider } from '../providers/espn';
-import { mapNewsItem, mergeNews, type EspnNewsItem } from '../providers/espn/news';
+import {
+  EXCERPT_MAX_CHARS,
+  excerptOf,
+  mapNewsItem,
+  mergeNews,
+  type EspnNewsItem,
+} from '../providers/espn/news';
 
 const story = (overrides: Partial<EspnNewsItem> = {}): EspnNewsItem => ({
   id: 49988715,
@@ -23,7 +29,59 @@ const story = (overrides: Partial<EspnNewsItem> = {}): EspnNewsItem => ({
   ...overrides,
 });
 
+describe('story excerpts', () => {
+  const html =
+    '<p>City won 5-3.</p><photo1><p>A caption that must not appear.</p></photo1>' +
+    '<p>Semenyo scored twice &amp; said it &#x27;felt great&#x27;. Guardiola was less sure. He wants more.</p>' +
+    '<script>alert(1)</script><p>' +
+    'A very long closing paragraph. '.repeat(40) +
+    '</p>';
+
+  it('takes whole paragraphs, then whole sentences, up to the limit', () => {
+    expect(excerptOf(html, 60)).toEqual([
+      'City won 5-3.',
+      "Semenyo scored twice & said it 'felt great'.",
+    ]);
+  });
+
+  it('is plain text: no tags, no captions, no scripts', () => {
+    const text = excerptOf(html, 2000).join(' ');
+    expect(text).not.toMatch(/[<>]|caption|alert/);
+    expect(text).toContain("'felt great'");
+  });
+
+  it('never exceeds the limit, however long the story', () => {
+    const excerpt = excerptOf(html);
+    expect(excerpt.join('').length).toBeLessThanOrEqual(EXCERPT_MAX_CHARS);
+    expect(excerpt.length).toBeGreaterThan(0);
+    expect(excerptOf(undefined)).toEqual([]);
+  });
+
+  it('reaches the article only as an excerpt, and skips a line the summary already says', () => {
+    const article = mapNewsItem(story({ description: 'City won 5-3.', story: html }));
+    expect(article?.excerpt?.[0]).toMatch(/^Semenyo scored twice/);
+    // The story itself is never passed on: only the excerpt, which respects the limit.
+    expect(article).not.toHaveProperty('story');
+    expect((article?.excerpt ?? []).join('').length).toBeLessThanOrEqual(EXCERPT_MAX_CHARS);
+  });
+});
+
 describe('ESPN news mapper', () => {
+  it('drops a story whose link is not a web address, and images that are not https', () => {
+    expect(mapNewsItem(story({ links: { web: { href: 'javascript:alert(1)' } } }))).toBeNull();
+    expect(mapNewsItem(story({ links: { web: { href: 'not a url' } } }))).toBeNull();
+    const article = mapNewsItem(
+      story({
+        images: [
+          { url: 'javascript:alert(1)', width: 4000 },
+          { url: 'http://a.espncdn.com/photo/plain.jpg', width: 3000 },
+          { url: 'https://a.espncdn.com/photo/ok.jpg', width: 600 },
+        ],
+      }),
+    );
+    expect(article?.imageUrl).toBe('https://a.espncdn.com/photo/ok.jpg');
+  });
+
   it('maps a story, picks the widest image and finds its competition', () => {
     expect(mapNewsItem(story())).toEqual({
       id: '49988715',

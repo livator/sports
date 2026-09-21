@@ -222,6 +222,7 @@ export function Comments({
                 <div className="min-w-0">
                   <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2.5 text-[13px]">
                     <span className="font-bold">{c.author.name}</span>
+                    {c.author.staff && <span className="tag tag-neutral">{t('staff')}</span>}
                     {mine && <span className="text-accent-700">{t('you')}</span>}
                     <time dateTime={c.createdAt} className="text-ink-3">
                       {format.relativeTime(

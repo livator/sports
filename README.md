@@ -154,8 +154,13 @@ The scoreboard's left sidebar lists the latest headlines and follows the competi
 Each headline opens an article page with the publisher's headline, summary and photo, a link
 to the full story, and a comment thread of our own.
 
-- **The article body is never copied.** `NewsArticle` has no body field on purpose: the text
-  belongs to the publisher, so the page links out instead of republishing it.
+- **A publisher's article is never copied.** `NewsArticle.body` exists only for our own
+  articles. For a publisher's story the page shows the headline, the summary and a short
+  `excerpt`: the opening lines as plain text, at most `EXCERPT_MAX_CHARS` (480) characters, cut
+  at a sentence, credited, above a button to the full story. The text is theirs (often a wire
+  agency's, licensed to them); a few quoted sentences with a link is how aggregators work,
+  showing the whole piece is republishing. Do not raise the limit to "fix" short pages: write
+  your own article in the admin console instead, which can be as long as you like.
 - Headlines come from the data source (`getNews`, `getArticle`, both optional). ESPN serves one
   feed per competition; merged lists are capped at six feeds, de-duplicated and sorted by time.
   Video clips are dropped. Headlines stay in the publisher's language, whatever the UI language.
@@ -257,6 +262,47 @@ The sign-in rate limiter keeps its counters in memory, which is per server insta
 several instances, give better-auth a shared store.
 
 Not built yet: password reset, changing email or display name, comment moderation and reporting.
+
+## Security
+
+What is in place, and what a deployment still has to bring.
+
+- **Headers** (`next.config.ts`): a content security policy (no framing, no plugins, forms and
+  `<base>` cannot point elsewhere, scripts cannot call other hosts), `X-Frame-Options`,
+  `nosniff`, a referrer policy, a permissions policy, and HSTS in production. Scripts and styles
+  stay at `'unsafe-inline'`: Next.js inlines its bootstrap data, and nonces would make every
+  page dynamic. `X-Powered-By` is off.
+- **Rate limits** (`middleware.ts`, `lib/rate-limit.ts`), per client address: 300 page views,
+  240 API reads and 40 writes a minute, answered with 429 and `Retry-After`. It counts in the
+  memory of one process. **Run the app behind a proxy that sets the client address** (or name
+  the header in `CLIENT_IP_HEADER`, for example `cf-connecting-ip`): without one a client can
+  send its own `X-Forwarded-For` and dodge the limit. better-auth limits log in attempts on top.
+- **Upstream budget.** Every distinct match id, team id or far-off day is a distinct request
+  to a rate-limited source. TheSportsDB lookups may use at most 30% of its request budget, so
+  someone walking through ids cannot take the tables and the scoreboard down. Round numbers are
+  bounded, and every upstream request has a hard timeout.
+- **Writes** check the `Origin` header on top of `SameSite=Lax` cookies; server actions are
+  same-origin by design. Every admin page and action reads the role from the database.
+- **The demo admin cannot reach production.** Its password is printed in this README. In
+  production the account is only created from `ADMIN_EMAIL` and `ADMIN_PASSWORD`, and if a
+  development database brings `admin@pitchside.app` along with the demo password, the account
+  is suspended and signed out before the first log in is handled.
+- **User content is text.** Comments, names and article bodies are rendered as text, never as
+  HTML. Display names are cleaned on the server (NFKC, no control or direction-override
+  characters, 40 characters). Names are not unique, so comments by staff carry a "Staff" tag
+  that comes from the account's role, not from its name.
+- **Outside data is checked before it reaches a link or an image**: addresses from the news
+  feed must be `http(s)`, article photos `https` or one of our own uploads.
+- **Uploads**: admins only, type decided from the file's bytes, no SVG, random names, served
+  with `nosniff` and a sandboxing policy of their own.
+- **Dependencies**: `npm audit` is clean. Two fixes are `overrides` in the root
+  `package.json` (the PostCSS bundled inside Next.js, and the esbuild inside drizzle-kit's
+  loader), because the packages that pin them have not moved yet. Re-check them when
+  upgrading Next.js or drizzle-kit, and drop them once they are no longer needed.
+
+Not covered: there is no password reset, no two-factor log in, no moderation queue, and the
+view counter can be inflated within the write limit. Secrets live in `apps/web/.env.local`,
+which is git-ignored, as are the database, uploads and caches under `apps/web/data/`.
 
 ## Scripts
 

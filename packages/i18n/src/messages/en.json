@@ -309,7 +309,8 @@
     "placeholderArticle": "Join the discussion…",
     "upvote": "Upvote",
     "removeUpvote": "Remove upvote",
-    "loggedInHint": "Logged in as {name}. Your comment is not posted yet: check it and press Post comment."
+    "loggedInHint": "Logged in as {name}. Your comment is not posted yet: check it and press Post comment.",
+    "staff": "Staff"
   },
   "email": {
     "verifySubject": "Confirm your email for Pitchside",
@@ -355,7 +356,7 @@
     "back": "Matches",
     "football": "Football",
     "readFull": "Read the full story on {source}",
-    "sourceNote": "Headline and summary from {source}. The full article is on their site.",
+    "sourceNote": "Headline, summary and opening lines from {source}. The rest of the article is on their site.",
     "photoBy": "Photo: {credit}",
     "fallbackTitle": "News",
     "comments": "Comments ({count})",

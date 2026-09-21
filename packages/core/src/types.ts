@@ -340,7 +340,8 @@ export interface PlayerDetail {
 
 /**
  * A headline with its summary. For stories from an outside publisher the full text stays
- * with them: clients show this much and link to `sourceUrl`, and never republish the body.
+ * with them: clients show this much, at most a short `excerpt`, and link to `sourceUrl`. They
+ * never republish the body.
  * Only articles written by our own staff carry a `body`.
  */
 export interface NewsArticle {
@@ -360,6 +361,12 @@ export interface NewsArticle {
   sourceUrl: string;
   /** Our own articles only. Plain text, paragraphs separated by a blank line. */
   body?: string;
+  /**
+   * Publisher stories only: the opening lines, as plain paragraphs. Deliberately short (see
+   * EXCERPT_MAX_CHARS). It is there to say what the story is about before sending the reader
+   * to the publisher, not to stand in for the article.
+   */
+  excerpt?: string[];
   /** Our own articles only: a short label such as "Match report". */
   label?: string;
   /** Our own articles only: pinned to the top of news lists. */

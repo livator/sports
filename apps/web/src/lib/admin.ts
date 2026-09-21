@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { dbReady, getDb, schema } from '@/db';
@@ -31,7 +31,42 @@ export function adminCredentials(): AdminCredentials | null {
   return { ...DEMO_ADMIN, demo: true };
 }
 
+/**
+ * In production, locks the demo account if it exists with the demo password. That happens when
+ * a database made in development is put behind a live site: the password is printed in the
+ * README, so whoever reads it would be an admin. The account is suspended and signed out
+ * rather than deleted, so nothing it wrote is lost; set a new password to bring it back.
+ */
+async function retireDemoAdmin(): Promise<void> {
+  if (process.env.NODE_ENV !== 'production') return;
+  await dbReady();
+  const db = getDb();
+  const [demo] = await db
+    .select({ id: schema.user.id, hash: schema.account.password })
+    .from(schema.user)
+    .innerJoin(schema.account, eq(schema.account.userId, schema.user.id))
+    .where(
+      and(eq(schema.user.email, DEMO_ADMIN.email), eq(schema.account.providerId, 'credential')),
+    )
+    .limit(1);
+  if (!demo?.hash) return;
+
+  const ctx = await getAuth().$context;
+  const stillDemo = await ctx.password.verify({ hash: demo.hash, password: DEMO_ADMIN.password });
+  if (!stillDemo) return;
+
+  await db
+    .update(schema.user)
+    .set({ role: 'user', banned: true, banReason: 'Demo account with the demo password' })
+    .where(eq(schema.user.id, demo.id));
+  await db.delete(schema.session).where(eq(schema.session.userId, demo.id));
+  console.warn(
+    `[admin] ${DEMO_ADMIN.email} still had the demo password in production and has been locked.`,
+  );
+}
+
 async function seedAdmin(): Promise<void> {
+  await retireDemoAdmin();
   const credentials = adminCredentials();
   if (!credentials) return;
   await dbReady();

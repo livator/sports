@@ -13,7 +13,12 @@ export interface MatchComment {
   body: string;
   /** ISO-8601 UTC timestamp */
   createdAt: string;
-  author: { id: string; name: string };
+  author: {
+    id: string;
+    name: string;
+    /** True for the site's own staff. Names are not unique, so this is what tells them apart. */
+    staff?: boolean;
+  };
   /** Upvotes. */
   votes: number;
   /** Whether the signed-in viewer has upvoted it. Always false for guests. */

@@ -12,7 +12,8 @@ export function GET(req: Request, { params }: Ctx) {
     const { searchParams } = new URL(req.url);
     const query: MatchQuery = {};
     const matchday = Number.parseInt(searchParams.get('matchday') ?? '', 10);
-    if (!Number.isNaN(matchday) && matchday > 0) query.matchday = matchday;
+    // Bounded: every distinct value is a distinct upstream request.
+    if (!Number.isNaN(matchday) && matchday > 0 && matchday <= 60) query.matchday = matchday;
     const dateFrom = dateParam(searchParams.get('dateFrom'));
     const dateTo = dateParam(searchParams.get('dateTo'));
     if (dateFrom) query.dateFrom = dateFrom;

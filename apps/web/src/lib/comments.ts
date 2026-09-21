@@ -49,6 +49,7 @@ export async function listComments(
       createdAt: comment.createdAt,
       authorId: user.id,
       authorName: user.name,
+      authorRole: user.role,
       votes: sql<number>`(select count(*) from ${commentVote} where ${commentVote.commentId} = ${comment.id})`,
       voted: viewerId
         ? sql<number>`exists(select 1 from ${commentVote} where ${commentVote.commentId} = ${comment.id} and ${commentVote.userId} = ${viewerId})`
@@ -64,7 +65,11 @@ export async function listComments(
     id: r.id,
     body: r.body,
     createdAt: r.createdAt.toISOString(),
-    author: { id: r.authorId, name: r.authorName },
+    author: {
+      id: r.authorId,
+      name: r.authorName,
+      ...(r.authorRole === 'admin' ? { staff: true } : {}),
+    },
     votes: Number(r.votes),
     voted: Number(r.voted) === 1,
   }));

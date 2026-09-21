@@ -12,6 +12,8 @@ export interface EspnNewsItem {
   byline?: string;
   images?: Array<{ url?: string; credit?: string; width?: number }>;
   links?: { web?: { href?: string } };
+  /** Full text as HTML. Only on the single-article endpoint. Never passed on whole. */
+  story?: string;
   categories?: Array<{
     type?: string;
     description?: string;
@@ -99,15 +101,102 @@ function leagueOf(item: EspnNewsItem): { slug?: LeagueSlug; label?: string } {
  * link back to the publisher, since an item we cannot attribute is not shown.
  * `knownLeague` is the feed the item came from, which beats guessing from its categories.
  */
+/**
+ * How much of a publisher's story may be quoted. The text is theirs (often a wire agency's,
+ * licensed to them), so this stays a teaser: a few sentences, credited, with a link to the
+ * rest. Raising it turns quoting into republishing. Do not.
+ */
+export const EXCERPT_MAX_CHARS = 480;
+
+const ENTITIES: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: ' ',
+  ndash: '–',
+  mdash: '—',
+  hellip: '…',
+  rsquo: '’',
+  lsquo: '‘',
+  rdquo: '”',
+  ldquo: '“',
+};
+
+function toText(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, '')
+    .replace(/&#x([0-9a-f]+);/gi, (_m, hex: string) =>
+      String.fromCodePoint(Number.parseInt(hex, 16)),
+    )
+    .replace(/&#(\d+);/g, (_m, dec: string) => String.fromCodePoint(Number.parseInt(dec, 10)))
+    .replace(/&([a-z]+);/gi, (whole, name: string) => ENTITIES[name.toLowerCase()] ?? whole)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * The opening of a story as plain paragraphs, at most `max` characters in all. Whole
+ * paragraphs while they fit; then whole sentences of the next one. Embedded media, captions
+ * and scripts are dropped before anything is read, and the result is text, never HTML.
+ */
+export function excerptOf(storyHtml: string | undefined, max = EXCERPT_MAX_CHARS): string[] {
+  if (!storyHtml) return [];
+  const cleaned = storyHtml.replace(
+    /<(script|style|figure|aside|iframe|photo\d*|video\d*|inline\d*|alsosee)[^>]*>[\s\S]*?<\/\1>/gi,
+    ' ',
+  );
+  const paragraphs = [...cleaned.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map((m) => toText(m[1] ?? ''))
+    .filter((p) => p.length > 0);
+
+  const out: string[] = [];
+  let used = 0;
+  for (const paragraph of paragraphs) {
+    if (used + paragraph.length <= max) {
+      out.push(paragraph);
+      used += paragraph.length;
+      continue;
+    }
+    // Whole sentences of the paragraph that does not fit, so it never stops mid-thought.
+    const sentences = paragraph.match(/[^.!?]+[.!?]+["”’)]*\s*/g) ?? [];
+    let partial = '';
+    for (const sentence of sentences) {
+      if (used + partial.length + sentence.length > max) break;
+      partial += sentence;
+    }
+    if (partial.trim()) out.push(partial.trim());
+    break;
+  }
+  return out;
+}
+
+/**
+ * An address from the feed, only if it is a plain web address. These end up in `href` and
+ * `src`, and the feed is somebody else's data: a "javascript:" link must never get that far.
+ */
+function webUrl(value: string | undefined, protocols: readonly string[]): string | undefined {
+  if (!value) return undefined;
+  try {
+    return protocols.includes(new URL(value).protocol) ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function mapNewsItem(item: EspnNewsItem, knownLeague?: LeagueSlug): NewsArticle | null {
-  const sourceUrl = item.links?.web?.href;
+  const sourceUrl = webUrl(item.links?.web?.href, ['https:', 'http:']);
   if (item.type === 'Media' || !item.headline || !item.published || !sourceUrl) return null;
   const league = knownLeague ? { slug: knownLeague } : leagueOf(item);
   // Prefer a wide image; ESPN lists several crops.
   const image = [...(item.images ?? [])]
-    .filter((i) => i.url)
+    .filter((i) => webUrl(i.url, ['https:']))
     .sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0];
   const author = item.byline?.trim();
+  // The summary usually repeats the first sentence; an excerpt that only says it again adds nothing.
+  const summary = (item.description ?? '').trim();
+  const excerpt = excerptOf(item.story).filter((p) => p !== summary);
 
   return {
     id: String(item.id),
@@ -119,6 +208,7 @@ export function mapNewsItem(item: EspnNewsItem, knownLeague?: LeagueSlug): NewsA
     ...(author ? { author } : {}),
     ...(image?.url ? { imageUrl: image.url } : {}),
     ...(image?.credit ? { imageCredit: image.credit } : {}),
+    ...(excerpt.length > 0 ? { excerpt } : {}),
     sourceName: 'ESPN',
     sourceUrl,
   };

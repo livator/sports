@@ -17,5 +17,5 @@ export {
   type TheSportsDbStore,
 } from './providers/thesportsdb';
 export { CompositeProvider } from './providers/composite';
-export { mapNewsItem, mergeNews } from './providers/espn/news';
+export { EXCERPT_MAX_CHARS, excerptOf, mapNewsItem, mergeNews } from './providers/espn/news';
 export { HttpProvider, type HttpProviderOptions } from './providers/http';

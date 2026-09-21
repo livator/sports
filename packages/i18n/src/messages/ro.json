@@ -309,7 +309,8 @@
     "placeholderArticle": "Intră în discuție…",
     "upvote": "Votează",
     "removeUpvote": "Retrage votul",
-    "loggedInHint": "Ești autentificat ca {name}. Comentariul nu este încă publicat: verifică-l și apasă Publică."
+    "loggedInHint": "Ești autentificat ca {name}. Comentariul nu este încă publicat: verifică-l și apasă Publică.",
+    "staff": "Redacție"
   },
   "email": {
     "verifySubject": "Confirmă-ți emailul pentru Pitchside",
@@ -355,7 +356,7 @@
     "back": "Meciuri",
     "football": "Fotbal",
     "readFull": "Citește articolul complet pe {source}",
-    "sourceNote": "Titlu și rezumat de la {source}. Articolul complet este pe site-ul lor.",
+    "sourceNote": "Titlu, rezumat și primele rânduri de la {source}. Restul articolului este pe site-ul lor.",
     "photoBy": "Foto: {credit}",
     "fallbackTitle": "Știri",
     "comments": "Comentarii ({count})",

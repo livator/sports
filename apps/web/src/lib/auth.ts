@@ -6,6 +6,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
 import { admin } from 'better-auth/plugins';
 import { getDb, schema } from '@/db';
+import { cleanDisplayName } from './display-name';
 import { sendVerificationEmail } from './email';
 
 /** Pulls the UI locale out of the page the user will land on after verifying (e.g. "/ro/match/..."). */
@@ -81,6 +82,20 @@ const createAuth = () =>
       },
     },
     advanced: { cookiePrefix: 'pitchside' },
+    // Names are shown to everyone next to comments, so they are cleaned where they are stored.
+    databaseHooks: {
+      user: {
+        create: {
+          before: async (user) => ({ data: { ...user, name: cleanDisplayName(user.name) } }),
+        },
+        update: {
+          before: async (user) =>
+            'name' in user
+              ? { data: { ...user, name: cleanDisplayName(user.name) } }
+              : { data: user },
+        },
+      },
+    },
     plugins: [
       // Roles and suspensions. A suspended ("banned") account cannot open a session, and
       // suspending one revokes the sessions it already has. Only the "admin" role may use it.

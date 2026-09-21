@@ -21,7 +21,8 @@
     "ADMIN_PASSWORD",
     "UPLOADS_DIR",
     "THESPORTSDB_API_KEY",
-    "TSDB_CACHE_DIR"
+    "TSDB_CACHE_DIR",
+    "CLIENT_IP_HEADER"
   ],
   "tasks": {
     "build": {

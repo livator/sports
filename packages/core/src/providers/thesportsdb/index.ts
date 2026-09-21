@@ -35,6 +35,8 @@ const TSDB_LEAGUES: Partial<Record<LeagueSlug, { id: string; regularRounds: numb
   'ukrainian-premier-league': { id: '4354', regularRounds: 30 },
 };
 const COVERED = LEAGUES.filter((l) => TSDB_LEAGUES[l.slug] !== undefined);
+/** Requests for one thing a visitor named, as opposed to the rounds everything is built from. */
+const LOOKUP_PATHS = new Set(['/lookupevent.php', '/lookupteam.php', '/eventsday.php']);
 
 /** The public test key. It works without signing up, within the limits described below. */
 const FREE_KEY = '123';
@@ -81,12 +83,22 @@ export interface TheSportsDbStore {
  */
 const FREE_BUDGET = { requests: 26, perMs: 60_000 };
 const PAID_BUDGET = { requests: 90, perMs: 60_000 };
+/**
+ * Share of the budget open to requests whose address a visitor chooses: one match, one team,
+ * one far-off day. Anyone can ask for a thousand different match ids; without this cap that
+ * would spend the whole budget and take the tables and the scoreboard down with it.
+ */
+const LOOKUP_SHARE = 0.3;
+/** Days either side of today for which a day outside the current rounds is still looked up. */
+const DAY_LOOKUP_REACH = 45;
 const MAX_CONCURRENT = 2;
 const RETRY_WAITS_MS = [4_000, 10_000];
 /** Rounds either side of the current one that date queries look at. */
 const DAY_WINDOW = 1;
 const RANGE_WINDOW = 4;
 const FIXTURES_AHEAD = 3;
+/** No league here has more rounds than this, play-offs included. */
+const MAX_ROUND = 60;
 /** A round counts as busy from a little before a kick-off until the result has settled. */
 const BUSY_BEFORE_MS = 30 * 60_000;
 const BUSY_AFTER_MS = 3 * 60 * 60_000;
@@ -150,6 +162,8 @@ export class TheSportsDbProvider implements SportsDataProvider {
   private readonly inFlight = new Map<string, Promise<unknown>>();
   /** When each recent request to the source went out, oldest first. */
   private readonly sentAt: number[] = [];
+  /** The same, for the requests whose address a visitor chose. */
+  private readonly lookupsSentAt: number[] = [];
   private running = 0;
   private readonly waiting: Array<() => void> = [];
   /** Every match seen so far, by league and round. Lets a date query find a replayed game. */
@@ -199,18 +213,26 @@ export class TheSportsDbProvider implements SportsDataProvider {
     }
   }
 
-  /** Waits until another request fits in the budget, then books it. */
-  private async book(): Promise<void> {
+  /**
+   * Waits until another request fits in the budget, then books it. A lookup has to fit in the
+   * lookups' share as well, so lookups can starve each other but never the rounds.
+   */
+  private async book(path: string): Promise<void> {
+    const lookup = LOOKUP_PATHS.has(path);
+    const lookupMax = Math.max(1, Math.floor(this.budget.requests * LOOKUP_SHARE));
     for (;;) {
       const now = Date.now();
-      while (this.sentAt.length > 0 && now - (this.sentAt[0] ?? 0) >= this.budget.perMs) {
-        this.sentAt.shift();
+      for (const sent of [this.sentAt, this.lookupsSentAt]) {
+        while (sent.length > 0 && now - (sent[0] ?? 0) >= this.budget.perMs) sent.shift();
       }
-      if (this.sentAt.length < this.budget.requests) {
+      const room = this.sentAt.length < this.budget.requests;
+      if (room && (!lookup || this.lookupsSentAt.length < lookupMax)) {
         this.sentAt.push(now);
+        if (lookup) this.lookupsSentAt.push(now);
         return;
       }
-      await this.sleep(Math.max(50, this.budget.perMs - (now - (this.sentAt[0] ?? now))));
+      const oldest = (room ? this.lookupsSentAt[0] : this.sentAt[0]) ?? now;
+      await this.sleep(Math.max(50, this.budget.perMs - (now - oldest)));
     }
   }
 
@@ -285,7 +307,7 @@ export class TheSportsDbProvider implements SportsDataProvider {
 
   private async send<T>(url: URL, path: string, freshness: Freshness): Promise<T> {
     for (let attempt = 0; ; attempt++) {
-      await this.book();
+      await this.book(path);
       let res: Response;
       try {
         res = await this.fetchFn(url, {
@@ -445,7 +467,9 @@ export class TheSportsDbProvider implements SportsDataProvider {
     const { current } = await this.rounds(slug);
     const matches =
       query.matchday !== undefined
-        ? await this.round(slug, query.matchday, current)
+        ? query.matchday >= 1 && query.matchday <= MAX_ROUND
+          ? await this.round(slug, query.matchday, current)
+          : []
         : await this.roundsBetween(slug, current - RANGE_WINDOW, current + RANGE_WINDOW, current);
     return matches
       .filter((m) => {
@@ -473,15 +497,17 @@ export class TheSportsDbProvider implements SportsDataProvider {
     // A day far from now is not in the rounds around today, so it costs one more request.
     // The free key may cut that list short, which is why it is the fallback and not the rule.
     const today = this.now().toISOString().slice(0, 10);
-    const thatDay = covered
-      ? []
-      : await this.request<TsdbEvents>(
-          '/eventsday.php',
-          { d: date, l: this.config(slug).id },
-          date < today ? 'settled' : 'recent',
-        )
-          .then((data) => mapEvents(data, slug))
-          .catch(() => [] as Match[]);
+    const daysAway = Math.abs(Date.parse(date) - Date.parse(today)) / 86_400_000;
+    const thatDay =
+      covered || !(daysAway <= DAY_LOOKUP_REACH)
+        ? []
+        : await this.request<TsdbEvents>(
+            '/eventsday.php',
+            { d: date, l: this.config(slug).id },
+            date < today ? 'settled' : 'recent',
+          )
+            .then((data) => mapEvents(data, slug))
+            .catch(() => [] as Match[]);
 
     // Rounds already read for the table cost nothing to look through, and that is where a
     // postponed game turns up when it is finally played.
