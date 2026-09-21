@@ -17,6 +17,12 @@ export const user = sqliteTable('user', {
   email: text('email').notNull().unique(),
   emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
   image: text('image'),
+  /* Added by better-auth's admin plugin. "admin" opens the console; everyone else is "user". */
+  role: text('role'),
+  /** A suspended account: cannot sign in, and its sessions are revoked when the flag is set. */
+  banned: integer('banned', { mode: 'boolean' }).default(false),
+  banReason: text('ban_reason'),
+  banExpires: integer('ban_expires', { mode: 'timestamp_ms' }),
   ...timestamps,
 });
 
@@ -31,6 +37,8 @@ export const session = sqliteTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
+    /** Admin plugin column. Impersonation is not used by the console, but the plugin writes it. */
+    impersonatedBy: text('impersonated_by'),
     ...timestamps,
   },
   (t) => [index('session_user_idx').on(t.userId)],
@@ -107,4 +115,44 @@ export const commentVote = sqliteTable(
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.commentId, t.userId] })],
+);
+
+/**
+ * News written by our own staff in the admin console. Unlike headlines from the data
+ * source, these have a body, because the text is ours to publish.
+ *
+ * There is no "scheduled" status: an article is scheduled when it is published with a
+ * `publishedAt` in the future, so going live needs no background job.
+ */
+export const article = sqliteTable(
+  'article',
+  {
+    /** "ps-" plus random characters, so it can never collide with a data-source article id. */
+    id: text('id').primaryKey(),
+    status: text('status', { enum: ['draft', 'published'] })
+      .notNull()
+      .default('draft'),
+    /** Competition slug, or null for a general story shown under every filter. */
+    leagueSlug: text('league_slug'),
+    tag: text('tag').notNull().default(''),
+    title: text('title').notNull(),
+    summary: text('summary').notNull().default(''),
+    /** Plain text; a blank line separates paragraphs. */
+    body: text('body').notNull().default(''),
+    /** Byline as printed. Not necessarily the account that saved it. */
+    author: text('author').notNull().default(''),
+    imageUrl: text('image_url'),
+    caption: text('caption').notNull().default(''),
+    featured: integer('featured', { mode: 'boolean' }).notNull().default(false),
+    commentsOn: integer('comments_on', { mode: 'boolean' }).notNull().default(true),
+    views: integer('views').notNull().default(0),
+    publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
+    /** Kept when the account is removed: the article outlives its editor. */
+    editorId: text('editor_id').references(() => user.id, { onDelete: 'set null' }),
+    ...timestamps,
+  },
+  (t) => [
+    index('article_public_idx').on(t.status, t.publishedAt),
+    index('article_updated_idx').on(t.updatedAt),
+  ],
 );

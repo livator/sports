@@ -108,6 +108,7 @@ type AuthErrorKey =
   | 'invalidEmail'
   | 'nameRequired'
   | 'tooManyRequests'
+  | 'suspended'
   | 'generic';
 
 function errorKey(error: { code?: string | undefined; status?: number }): AuthErrorKey {
@@ -127,6 +128,8 @@ function errorKey(error: { code?: string | undefined; status?: number }): AuthEr
       return 'passwordTooLong';
     case 'INVALID_EMAIL':
       return 'invalidEmail';
+    case 'BANNED_USER':
+      return 'suspended';
     default:
       return 'generic';
   }

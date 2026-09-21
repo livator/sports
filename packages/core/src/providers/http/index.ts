@@ -36,7 +36,9 @@ export class HttpProvider implements SportsDataProvider {
 
   constructor(options: HttpProviderOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, '');
-    this.fetchFn = options.fetch ?? globalThis.fetch;
+    // Browsers throw "Illegal invocation" when fetch is called as a method of another object,
+    // so the global one is wrapped instead of stored.
+    this.fetchFn = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
     this.requestInit = options.requestInit ?? {};
   }
 

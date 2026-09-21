@@ -9,7 +9,10 @@
     "tables": "Tables",
     "players": "Players",
     "signIn": "Sign in",
-    "language": "Language"
+    "language": "Language",
+    "tickerLabel": "Latest results",
+    "tickerPrev": "Previous results",
+    "tickerNext": "Next results"
   },
   "footer": {
     "tagline": "Pitchside — live scores, tables and players for Europe’s top leagues.",
@@ -92,6 +95,21 @@
       "offsides": "Offsides",
       "totalPasses": "Passes",
       "saves": "Saves"
+    },
+    "lineups": "Line-ups",
+    "form": "Form",
+    "seasonComparison": "Season comparison",
+    "bench": "Bench",
+    "lineupsLater": "Line-ups are published about an hour before kick-off.",
+    "lineupsNone": "No line-ups published for this match.",
+    "lineupsNote": "Confirmed starting XI. Select a player for their profile.",
+    "cameOn": "{player}, came on",
+    "wentOff": "{player}, went off",
+    "compare": {
+      "points": "Points",
+      "wins": "Wins",
+      "goalsFor": "Goals scored",
+      "goalsAgainst": "Goals conceded"
     }
   },
   "table": {
@@ -142,7 +160,9 @@
     "assists": "Assists",
     "goals": "Goals",
     "none": "No goals recorded yet this season.",
-    "back": "Players"
+    "back": "Players",
+    "search": "Search player or club",
+    "noMatch": "No players match “{query}”."
   },
   "team": {
     "fallbackTitle": "Team",
@@ -168,7 +188,9 @@
       "Defender": "DF",
       "Midfielder": "MF",
       "Forward": "FW"
-    }
+    },
+    "nextMatch": "Next match",
+    "relatedNews": "Related news"
   },
   "player": {
     "fallbackTitle": "Player",
@@ -249,7 +271,8 @@
       "invalidEmail": "That doesn’t look like an email address.",
       "nameRequired": "Enter a display name.",
       "tooManyRequests": "Too many attempts. Wait a minute and try again.",
-      "generic": "That didn’t work. Try again."
+      "generic": "That didn’t work. Try again.",
+      "suspended": "This account is suspended. Contact us if you think that is a mistake."
     }
   },
   "account": {
@@ -333,7 +356,9 @@
     "sourceNote": "Headline and summary from {source}. The full article is on their site.",
     "photoBy": "Photo: {credit}",
     "fallbackTitle": "News",
-    "comments": "Comments ({count})"
+    "comments": "Comments ({count})",
+    "commentsClosed": "Comments are closed for this article.",
+    "by": "By {author}"
   },
   "clubs": {
     "title": "Your clubs",

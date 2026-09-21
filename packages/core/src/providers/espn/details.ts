@@ -1,13 +1,17 @@
 import type {
+  FormResult,
   LeagueSlug,
+  LineupPlayer,
   Match,
   MatchDetail,
   MatchEvent,
+  MatchLineups,
   MatchStat,
   PastMeeting,
   PlayerDetail,
   PlayerMatchLog,
   SquadPlayer,
+  TeamLineup,
   TimelineEvent,
   TimelineKind,
 } from '../../types';
@@ -55,6 +59,24 @@ export interface EspnSummary {
   seasonseries?: Array<{
     summary?: string;
     events?: Array<{ id: string; date: string; competitors?: EspnCompetitor[] }>;
+  }>;
+  rosters?: EspnMatchRoster[];
+  lastFiveGames?: Array<{
+    team?: { id?: string };
+    events?: Array<{ gameDate?: string; gameResult?: string }>;
+  }>;
+}
+
+export interface EspnMatchRoster {
+  homeAway?: 'home' | 'away';
+  formation?: string;
+  roster?: Array<{
+    starter?: boolean;
+    jersey?: string;
+    subbedIn?: boolean;
+    subbedOut?: boolean;
+    position?: { abbreviation?: string };
+    athlete?: { id?: string; displayName?: string; shortName?: string; lastName?: string };
   }>;
 }
 
@@ -190,6 +212,99 @@ function mapMeetings(summary: EspnSummary): PastMeeting[] {
   return meetings.sort((a, b) => b.date.localeCompare(a.date));
 }
 
+/* ---------- Line-ups and form ---------- */
+
+/** How far up the pitch a position sits: 0 goalkeeper … 5 centre-forward. */
+function lineOf(abbreviation: string): number {
+  const p = abbreviation.toUpperCase().split('-')[0] ?? '';
+  if (p === 'G' || p === 'GK') return 0;
+  if (p === 'SW' || p.endsWith('B') || p === 'CD' || p === 'D') return 1;
+  if (p === 'DM' || p === 'CDM') return 2;
+  if (p === 'AM' || p === 'CAM') return 4;
+  if (p.endsWith('M')) return 3;
+  return 5;
+}
+
+/** Where across the pitch: negative is the team's left, positive its right. */
+function sideOf(abbreviation: string): number {
+  const [p = '', flank] = abbreviation.toUpperCase().split('-');
+  if (flank === 'L') return -1;
+  if (flank === 'R') return 1;
+  if (p.length > 1 && p.startsWith('L')) return -2;
+  if (p.length > 1 && p.startsWith('R')) return 2;
+  return 0;
+}
+
+export function mapTeamLineup(roster: EspnMatchRoster | undefined): TeamLineup | null {
+  const starters: Array<LineupPlayer & { line: number; side: number }> = [];
+  const bench: LineupPlayer[] = [];
+  for (const entry of roster?.roster ?? []) {
+    const a = entry.athlete;
+    if (!a?.id || !a.displayName) continue;
+    const player: LineupPlayer = {
+      id: a.id,
+      name: a.displayName,
+      shortName: a.lastName || a.shortName || a.displayName,
+      ...(entry.jersey ? { number: entry.jersey } : {}),
+      subbedIn: entry.subbedIn === true,
+      subbedOut: entry.subbedOut === true,
+    };
+    if (!entry.starter) {
+      bench.push(player);
+      continue;
+    }
+    const position = entry.position?.abbreviation ?? '';
+    starters.push({ ...player, line: lineOf(position), side: sideOf(position) });
+  }
+  if (starters.length === 0) return null;
+
+  starters.sort((a, b) => a.line - b.line);
+  // "4-2-3-1" says how many players each line holds; the goalkeeper is implied.
+  const formation = roster?.formation;
+  const shape = (formation ?? '').split('-').map((n) => Number.parseInt(n, 10));
+  const fits =
+    shape.length > 1 &&
+    shape.every((n) => n > 0) &&
+    shape.reduce((sum, n) => sum + n, 1) === starters.length;
+
+  const rows: Array<typeof starters> = [];
+  if (fits) {
+    let at = 0;
+    for (const size of [1, ...shape]) {
+      rows.push(starters.slice(at, at + size));
+      at += size;
+    }
+  } else {
+    for (const s of starters) {
+      const last = rows.at(-1);
+      if (last && last[0]?.line === s.line) last.push(s);
+      else rows.push([s]);
+    }
+  }
+
+  const strip = ({ line: _line, side: _side, ...player }: (typeof starters)[number]) => player;
+  return {
+    ...(formation ? { formation } : {}),
+    rows: rows.map((row) => [...row].sort((a, b) => a.side - b.side).map(strip)),
+    bench,
+  };
+}
+
+function mapLineups(summary: EspnSummary): MatchLineups | null {
+  const home = mapTeamLineup(summary.rosters?.find((r) => r.homeAway === 'home'));
+  const away = mapTeamLineup(summary.rosters?.find((r) => r.homeAway === 'away'));
+  return home && away ? { home, away } : null;
+}
+
+function mapRecentForm(summary: EspnSummary, teamId: string): FormResult[] {
+  const games = summary.lastFiveGames?.find((g) => g.team?.id === teamId)?.events ?? [];
+  return [...games]
+    .sort((a, b) => (a.gameDate ?? '').localeCompare(b.gameDate ?? ''))
+    .map((g) => g.gameResult)
+    .filter((r): r is FormResult => r === 'W' || r === 'D' || r === 'L')
+    .slice(-5);
+}
+
 export function mapMatchDetail(
   summary: EspnSummary,
   leagueSlug: LeagueSlug,
@@ -232,9 +347,16 @@ export function mapMatchDetail(
   };
 
   const summaryLine = summary.seasonseries?.[0]?.summary;
+  const lineups = mapLineups(summary);
+  const form = {
+    home: mapRecentForm(summary, home.team.id),
+    away: mapRecentForm(summary, away.team.id),
+  };
   return {
     match,
     ...(attendance ? { attendance } : {}),
+    ...(lineups ? { lineups } : {}),
+    ...(form.home.length > 0 || form.away.length > 0 ? { form } : {}),
     stats: started ? mapMatchStats(summary, home.team.id, away.team.id) : [],
     timeline,
     headToHead: {

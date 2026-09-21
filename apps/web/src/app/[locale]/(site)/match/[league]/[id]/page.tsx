@@ -4,6 +4,7 @@ import {
   isLive,
   type MatchDetail,
   type MatchStat,
+  type StandingRow,
   type TimelineEvent,
 } from '@sports/core';
 import { LOCALE_TAGS, type Locale } from '@sports/i18n';
@@ -14,6 +15,8 @@ import { Chips } from '@/components/chips';
 import { Comments } from '@/components/comments';
 import { Crest } from '@/components/crest';
 import { DataNotice } from '@/components/data-notice';
+import { FormPips } from '@/components/form-pips';
+import { Lineups } from '@/components/lineups';
 import { LiveRefresh } from '@/components/live-refresh';
 import { LocalTime } from '@/components/local-time';
 import { BackLink } from '@/components/page-header';
@@ -27,7 +30,8 @@ type Props = {
   params: Promise<{ locale: Locale; league: string; id: string }>;
   searchParams: Promise<{ tab?: string }>;
 };
-type Tab = 'summary' | 'stats' | 'comments';
+type Tab = 'summary' | 'lineups' | 'stats' | 'comments';
+const TABS: readonly Tab[] = ['summary', 'lineups', 'stats', 'comments'];
 
 async function load(leagueSlug: string, id: string): Promise<MatchDetail | null | 'unsupported'> {
   const league = findLeague(leagueSlug);
@@ -57,12 +61,45 @@ function GoalMark({ className, label }: { className: string; label: string }) {
   );
 }
 
-function StatBars({ stats, label }: { stats: MatchStat[]; label: (key: string) => string }) {
+/** Before kick-off the Stats tab compares the two seasons so far, from the league table. */
+const LOWER_IS_BETTER = new Set(['goalsAgainst']);
+
+function seasonComparison(home: StandingRow, away: StandingRow): MatchStat[] {
+  const stat = (key: string, pick: (row: StandingRow) => number): MatchStat => ({
+    key,
+    label: key,
+    home: pick(home),
+    away: pick(away),
+  });
+  return [
+    stat('points', (r) => r.points),
+    stat('wins', (r) => r.won),
+    stat('goalsFor', (r) => r.goalsFor),
+    stat('goalsAgainst', (r) => r.goalsAgainst),
+  ];
+}
+
+function StatBars({
+  stats,
+  label,
+  heading,
+}: {
+  stats: MatchStat[];
+  label: (key: string) => string;
+  heading?: string;
+}) {
   return (
     <div className="max-w-[720px] pt-8">
+      {heading && (
+        <>
+          <h2 className="pb-2.5 eyebrow">{heading}</h2>
+          <div className="rule-2" />
+        </>
+      )}
       {stats.map((s) => {
         const total = s.home + s.away || 1;
         const unit = s.unit ?? '';
+        const homeLeads = LOWER_IS_BETTER.has(s.key) ? s.home <= s.away : s.home >= s.away;
         return (
           <div key={s.key} className="border-b py-3.5">
             <div className="mb-2 flex justify-between tnum text-sm">
@@ -81,13 +118,13 @@ function StatBars({ stats, label }: { stats: MatchStat[]; label: (key: string) =
             <div className="grid h-2 grid-cols-2 gap-1">
               <div className="flex justify-end bg-neutral-200">
                 <div
-                  className={s.home >= s.away ? 'bg-ink' : 'bg-neutral-500'}
+                  className={homeLeads ? 'bg-ink' : 'bg-neutral-500'}
                   style={{ width: `${Math.round((s.home / total) * 100)}%` }}
                 />
               </div>
               <div className="bg-neutral-200">
                 <div
-                  className={`h-full ${s.away > s.home ? 'bg-ink' : 'bg-neutral-500'}`}
+                  className={`h-full ${homeLeads ? 'bg-neutral-500' : 'bg-ink'}`}
                   style={{ width: `${Math.round((s.away / total) * 100)}%` }}
                 />
               </div>
@@ -123,10 +160,9 @@ export default async function MatchPage({ params, searchParams }: Props) {
     );
   }
 
-  const { match, stats, timeline, headToHead, attendance } = detail;
+  const { match, stats, timeline, headToHead, attendance, lineups, form } = detail;
   const requestedTab = (await searchParams).tab;
-  const tab: Tab =
-    requestedTab === 'stats' || requestedTab === 'comments' ? requestedTab : 'summary';
+  const tab: Tab = TABS.find((name) => name === requestedTab) ?? 'summary';
   const base = `/match/${league.slug}/${match.id}`;
   const tag = LOCALE_TAGS[locale];
   const live = isLive(match.status);
@@ -144,6 +180,20 @@ export default async function MatchPage({ params, searchParams }: Props) {
             : match.status === 'cancelled'
               ? ts('cancelledLong')
               : null;
+
+  // The league table is only needed for the pre-match comparison, so only ask for it then.
+  const table =
+    tab === 'stats' && notStarted && league.hasTable
+      ? await safe(getProvider().getStandings(league.slug, { includeForm: false }))
+      : null;
+  const rowOf = (teamId: string) => table?.rows.find((r) => r.team.id === teamId);
+  const homeRow = rowOf(match.homeTeam.id);
+  const awayRow = rowOf(match.awayTeam.id);
+  const comparison = homeRow && awayRow ? seasonComparison(homeRow, awayRow) : [];
+  const formRows = [
+    { team: match.homeTeam, results: form?.home ?? [] },
+    { team: match.awayTeam, results: form?.away ?? [] },
+  ].filter((row) => row.results.length > 0);
 
   const eventText = (e: TimelineEvent): string => {
     switch (e.kind) {
@@ -221,6 +271,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
             label={t('sections')}
             items={[
               { href: base, label: t('summary'), active: tab === 'summary' },
+              { href: `${base}?tab=lineups`, label: t('lineups'), active: tab === 'lineups' },
               { href: `${base}?tab=stats`, label: t('stats'), active: tab === 'stats' },
               {
                 href: `${base}?tab=comments`,
@@ -236,8 +287,27 @@ export default async function MatchPage({ params, searchParams }: Props) {
         <div className="max-w-[720px] pt-3">
           <Comments thread={{ type: 'match', league: league.slug, matchId: match.id }} />
         </div>
+      ) : tab === 'lineups' ? (
+        lineups ? (
+          <Lineups
+            lineups={lineups}
+            home={match.homeTeam}
+            away={match.awayTeam}
+            league={league.slug}
+          />
+        ) : (
+          <p className="pt-8 text-[17px] text-ink-2">
+            {notStarted ? t('lineupsLater') : t('lineupsNone')}
+          </p>
+        )
       ) : tab === 'stats' ? (
-        stats.length > 0 ? (
+        comparison.length > 0 ? (
+          <StatBars
+            stats={comparison}
+            heading={t('seasonComparison')}
+            label={(key) => t(`compare.${key}` as never)}
+          />
+        ) : stats.length > 0 ? (
           <StatBars
             stats={stats}
             label={(key) =>
@@ -291,6 +361,21 @@ export default async function MatchPage({ params, searchParams }: Props) {
             )}
           </div>
           <div className="max-w-[420px] min-w-0 flex-[1_1_280px]">
+            {formRows.length > 0 && (
+              <div className="pb-8">
+                <h2 className="pb-2.5 eyebrow">{t('form')}</h2>
+                <div className="rule-2" />
+                {formRows.map((row) => (
+                  <div
+                    key={row.team.id}
+                    className="flex items-center justify-between gap-3 border-b py-2.5 text-sm"
+                  >
+                    <span className="truncate font-semibold">{row.team.shortName}</span>
+                    <FormPips form={row.results} size="md" />
+                  </div>
+                ))}
+              </div>
+            )}
             <h2 className="pb-2.5 eyebrow">{t('headToHead')}</h2>
             <div className="rule-2" />
             {headToHead.meetings.slice(0, 6).map((m) => (

@@ -9,7 +9,10 @@
     "tables": "Clasamente",
     "players": "Jucători",
     "signIn": "Autentificare",
-    "language": "Limbă"
+    "language": "Limbă",
+    "tickerLabel": "Ultimele rezultate",
+    "tickerPrev": "Rezultatele anterioare",
+    "tickerNext": "Rezultatele următoare"
   },
   "footer": {
     "tagline": "Pitchside — scoruri live, clasamente și jucători din marile campionate ale Europei.",
@@ -92,6 +95,21 @@
       "offsides": "Ofsaiduri",
       "totalPasses": "Pase",
       "saves": "Parade"
+    },
+    "lineups": "Echipe",
+    "form": "Formă",
+    "seasonComparison": "Comparație pe sezon",
+    "bench": "Rezerve",
+    "lineupsLater": "Echipele de start se publică cu aproximativ o oră înainte de meci.",
+    "lineupsNone": "Nu s-au publicat echipele pentru acest meci.",
+    "lineupsNote": "Primul 11 confirmat. Alege un jucător pentru a-i vedea profilul.",
+    "cameOn": "{player}, a intrat",
+    "wentOff": "{player}, a ieșit",
+    "compare": {
+      "points": "Puncte",
+      "wins": "Victorii",
+      "goalsFor": "Goluri marcate",
+      "goalsAgainst": "Goluri primite"
     }
   },
   "table": {
@@ -142,7 +160,9 @@
     "assists": "Pase de gol",
     "goals": "Goluri",
     "none": "Încă nu s-a marcat niciun gol în acest sezon.",
-    "back": "Jucători"
+    "back": "Jucători",
+    "search": "Caută jucător sau echipă",
+    "noMatch": "Niciun jucător pentru „{query}”."
   },
   "team": {
     "fallbackTitle": "Echipă",
@@ -168,7 +188,9 @@
       "Defender": "F",
       "Midfielder": "M",
       "Forward": "A"
-    }
+    },
+    "nextMatch": "Următorul meci",
+    "relatedNews": "Știri despre echipă"
   },
   "player": {
     "fallbackTitle": "Jucător",
@@ -249,7 +271,8 @@
       "invalidEmail": "Aceasta nu pare o adresă de email.",
       "nameRequired": "Introdu un nume afișat.",
       "tooManyRequests": "Prea multe încercări. Așteaptă un minut și încearcă din nou.",
-      "generic": "Nu a mers. Încearcă din nou."
+      "generic": "Nu a mers. Încearcă din nou.",
+      "suspended": "Acest cont este suspendat. Scrie-ne dacă crezi că este o greșeală."
     }
   },
   "account": {
@@ -333,7 +356,9 @@
     "sourceNote": "Titlu și rezumat de la {source}. Articolul complet este pe site-ul lor.",
     "photoBy": "Foto: {credit}",
     "fallbackTitle": "Știri",
-    "comments": "Comentarii ({count})"
+    "comments": "Comentarii ({count})",
+    "commentsClosed": "Comentariile sunt închise pentru acest articol.",
+    "by": "De {author}"
   },
   "clubs": {
     "title": "Echipele tale",

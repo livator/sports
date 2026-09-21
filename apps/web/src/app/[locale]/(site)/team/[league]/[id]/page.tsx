@@ -8,6 +8,7 @@ import { DataNotice } from '@/components/data-notice';
 import { FollowButton } from '@/components/favourites';
 import { FormPips } from '@/components/form-pips';
 import { LocalTime } from '@/components/local-time';
+import { NewsList } from '@/components/news-list';
 import { BackLink } from '@/components/page-header';
 import { Link } from '@/i18n/navigation';
 import { competitionName } from '@/lib/competitions';
@@ -75,7 +76,9 @@ export default async function TeamPage({ params }: Props) {
     );
   }
 
-  const { team, results, fixtures, squad } = detail;
+  const { team, results, fixtures, squad, news } = detail;
+  const next = fixtures[0];
+  const nextVenue = next?.venue ?? (next?.homeTeam.id === team.id ? detail.venue : undefined);
   const row = standings?.rows.find((r) => r.team.id === team.id);
   const kpis = row
     ? [
@@ -135,6 +138,29 @@ export default async function TeamPage({ params }: Props) {
 
       <div className="flex flex-wrap gap-x-14 gap-y-10 pt-8">
         <div className="min-w-0 flex-[1_1_480px]">
+          {next && (
+            <Link
+              href={matchHref(next)}
+              className="mb-9 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 bg-ink px-6 py-5 text-ground hover:text-ground"
+            >
+              <span className="min-w-0">
+                <span className="mb-2 block text-xs tracking-[0.08em] text-accent uppercase">
+                  {t('nextMatch')} · <LocalTime iso={next.kickoff} mode="date" />,{' '}
+                  <LocalTime iso={next.kickoff} />
+                </span>
+                <span className="block text-[clamp(18px,2.4vw,26px)] leading-[1.1] font-extrabold tracking-[-0.02em]">
+                  {next.homeTeam.shortName} v {next.awayTeam.shortName}
+                </span>
+                <span className="mt-2 block text-[13px] opacity-75">
+                  {name}
+                  {nextVenue ? ` · ${nextVenue}` : ''}
+                </span>
+              </span>
+              <span aria-hidden className="text-2xl">
+                ›
+              </span>
+            </Link>
+          )}
           <h2 className="pb-2.5 eyebrow">{t('fixturesResults')}</h2>
           <div className="rule-2" />
           {matches.length > 0 ? (
@@ -188,6 +214,11 @@ export default async function TeamPage({ params }: Props) {
               <div className="rule-2" />
               <p className="py-4 text-sm text-ink-2">{t('squadUnavailable')}</p>
             </>
+          )}
+          {news && news.length > 0 && (
+            <div className="pt-9">
+              <NewsList articles={news} heading={t('relatedNews')} />
+            </div>
           )}
         </div>
       </div>

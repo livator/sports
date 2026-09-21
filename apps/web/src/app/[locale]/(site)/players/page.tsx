@@ -5,10 +5,10 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { CompetitionNav } from '@/components/competition-nav';
 import { DataNotice } from '@/components/data-notice';
 import { PageHeader } from '@/components/page-header';
-import { Link } from '@/i18n/navigation';
+import { ScorersTable, type ScorerRow } from '@/components/scorers-table';
 import { competitionName, parseSelection } from '@/lib/competitions';
 import { getProvider, safe } from '@/lib/provider';
-import { playerHref, seasonLabelFor, teamHref } from '@/lib/view';
+import { seasonLabelFor } from '@/lib/view';
 
 type Props = {
   params: Promise<{ locale: Locale }>;
@@ -16,7 +16,7 @@ type Props = {
 };
 type Row = Scorer & { league: League };
 
-const LIMIT = 20;
+const LIMIT = 30;
 
 export async function generateMetadata({ params }: Pick<Props, 'params'>): Promise<Metadata> {
   const { locale } = await params;
@@ -63,77 +63,46 @@ export default async function PlayersPage({ params, searchParams }: Props) {
     .sort((a, b) => b.goals - a.goals || b.assists - a.assists || a.playedMatches - b.playedMatches)
     .slice(0, LIMIT);
 
+  const picker = (
+    <CompetitionNav
+      leagues={leagues}
+      activeCategory={category}
+      activeLeague={single}
+      categoryHref={(c) => (c === 'top5' ? '/players' : `/players?league=${c}`)}
+      leagueHref={(l) => `/players?league=${l.slug}`}
+      {...(category === 'top5'
+        ? { leadingInCategory: { href: '/players', label: t('allLeagues'), active: combined } }
+        : {})}
+    />
+  );
+
   return (
     <section>
       <PageHeader kicker={t('kicker', { season: seasonLabelFor(new Date()) })} title={t('title')} />
-      <div className="border-b py-3.5">
-        <CompetitionNav
-          leagues={leagues}
-          activeCategory={category}
-          activeLeague={single}
-          categoryHref={(c) => (c === 'top5' ? '/players' : `/players?league=${c}`)}
-          leagueHref={(l) => `/players?league=${l.slug}`}
-          {...(category === 'top5'
-            ? { leadingInCategory: { href: '/players', label: t('allLeagues'), active: combined } }
-            : {})}
-        />
-      </div>
-
-      {failed ? (
-        <DataNotice kind="scorers" />
-      ) : rows.length === 0 ? (
-        <p className="py-12 text-[17px] text-ink-2">{t('none')}</p>
+      {failed || rows.length === 0 ? (
+        <>
+          <div className="border-b py-3.5">{picker}</div>
+          {failed ? (
+            <DataNotice kind="scorers" />
+          ) : (
+            <p className="py-12 text-[17px] text-ink-2">{t('none')}</p>
+          )}
+        </>
       ) : (
-        <div className="overflow-x-auto overflow-y-hidden pt-6">
-          <table className="table min-w-[560px]">
-            <thead>
-              <tr>
-                <th scope="col" className="w-10">
-                  #
-                </th>
-                <th scope="col">{t('player')}</th>
-                <th scope="col">{t('club')}</th>
-                <th scope="col">{t('league')}</th>
-                <th scope="col" className="num">
-                  {t('apps')}
-                </th>
-                <th scope="col" className="num">
-                  {t('assists')}
-                </th>
-                <th scope="col" className="num">
-                  {t('goals')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => (
-                <tr key={`${row.league.slug}-${row.player.id}`}>
-                  <td className="text-ink-3">{i + 1}</td>
-                  <td className="font-semibold">
-                    <Link
-                      href={playerHref(row.league.slug, row.player.id)}
-                      className="hover:text-accent"
-                    >
-                      {row.player.name}
-                    </Link>
-                  </td>
-                  <td>
-                    <Link
-                      href={teamHref(row.league.slug, row.team.id)}
-                      className="hover:text-accent"
-                    >
-                      {row.team.shortName}
-                    </Link>
-                  </td>
-                  <td className="text-ink-3">{competitionName(row.league, tc, true)}</td>
-                  <td className="num">{row.playedMatches}</td>
-                  <td className="num">{row.assists}</td>
-                  <td className="num text-lg font-extrabold">{row.goals}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ScorersTable
+          rows={rows.map((row, i): ScorerRow => ({
+            rank: i + 1,
+            league: row.league.slug,
+            leagueName: competitionName(row.league, tc, true),
+            player: { id: row.player.id, name: row.player.name },
+            team: { id: row.team.id, name: row.team.name, shortName: row.team.shortName },
+            apps: row.playedMatches,
+            assists: row.assists,
+            goals: row.goals,
+          }))}
+        >
+          {picker}
+        </ScorersTable>
       )}
     </section>
   );

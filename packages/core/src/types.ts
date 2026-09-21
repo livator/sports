@@ -242,11 +242,41 @@ export interface PastMeeting {
   score: Score;
 }
 
+export interface LineupPlayer {
+  id: string;
+  name: string;
+  /** Surname or short form, for tight spaces such as a pitch diagram. */
+  shortName: string;
+  number?: string;
+  subbedIn: boolean;
+  subbedOut: boolean;
+}
+
+export interface TeamLineup {
+  /** e.g. "4-2-3-1" */
+  formation?: string;
+  /**
+   * Starting XI by line, goalkeeper first, forwards last. Each line runs from the team's own
+   * left to its right; clients mirror it for whichever end the team is drawn at.
+   */
+  rows: LineupPlayer[][];
+  bench: LineupPlayer[];
+}
+
+export interface MatchLineups {
+  home: TeamLineup;
+  away: TeamLineup;
+}
+
 export interface MatchDetail {
   match: Match;
   attendance?: number;
   stats: MatchStat[];
   timeline: TimelineEvent[];
+  /** Present once the source has published the teams, usually about an hour before kick-off. */
+  lineups?: MatchLineups;
+  /** Each side's latest results before this match, oldest first. */
+  form?: { home: FormResult[]; away: FormResult[] };
   headToHead: {
     /** Source-provided one-liner, e.g. "LIV leads series 4-1". */
     summary?: string;
@@ -278,6 +308,8 @@ export interface TeamDetail {
   /** Upcoming matches, soonest first. */
   fixtures: Match[];
   squad: SquadPlayer[];
+  /** Latest headlines about this team, when the source has a feed for it. */
+  news?: NewsArticle[];
 }
 
 export interface PlayerMatchLog {
@@ -304,8 +336,9 @@ export interface PlayerDetail {
 /* ---------- News ---------- */
 
 /**
- * A headline with its summary. The full text stays with the publisher: clients show this
- * much and link to `sourceUrl`, they never republish the article body.
+ * A headline with its summary. For stories from an outside publisher the full text stays
+ * with them: clients show this much and link to `sourceUrl`, and never republish the body.
+ * Only articles written by our own staff carry a `body`.
  */
 export interface NewsArticle {
   id: string;
@@ -322,4 +355,16 @@ export interface NewsArticle {
   imageCredit?: string;
   sourceName: string;
   sourceUrl: string;
+  /** Our own articles only. Plain text, paragraphs separated by a blank line. */
+  body?: string;
+  /** Our own articles only: a short label such as "Match report". */
+  label?: string;
+  /** Our own articles only: pinned to the top of news lists. */
+  featured?: boolean;
+  /** False when the editor closed the thread. Absent means open. */
+  commentsOpen?: boolean;
 }
+
+/** Ids of articles written in our own console start with this; publisher ids are numeric. */
+export const OWN_ARTICLE_PREFIX = 'ps-';
+export const isOwnArticleId = (id: string): boolean => /^ps-[a-z0-9]{8,24}$/.test(id);

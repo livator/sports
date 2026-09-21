@@ -24,16 +24,17 @@ sports/
 
 ### Screens
 
-| Route                      | Screen                                                                     |
-| -------------------------- | -------------------------------------------------------------------------- |
-| `/`                        | Matches for a day: strip, competition picker, grouped rows, table, scorers |
-| `/match/:league/:id`       | Match: score, timeline, head to head, team stats, comments                 |
-| `/tables/:league`          | Full league table with form and qualification zones                        |
-| `/tables/:league/fixtures` | A league's fixtures and results by month                                   |
-| `/team/:league/:id`        | Team: season numbers, form, fixtures and results, squad                    |
-| `/players`                 | Top scorers, across all leagues or one                                     |
-| `/player/:league/:id`      | Player: season numbers, goals by match, profile                            |
-| `/news/:id`                | Article: headline, summary, photo, link to the publisher, comments         |
+| Route                      | Screen                                                                                                    |
+| -------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `/`                        | Matches for a day: strip, competition picker, grouped rows, table, scorers                                |
+| `/match/:league/:id`       | Match: score, timeline, form, head to head, line-ups, stats (season comparison before kick-off), comments |
+| `/tables/:league`          | Full league table with form and qualification zones                                                       |
+| `/tables/:league/fixtures` | A league's fixtures and results by month                                                                  |
+| `/team/:league/:id`        | Team: season numbers, form, next match, fixtures and results, squad, related news                         |
+| `/players`                 | Top scorers, across all leagues or one, with search                                                       |
+| `/player/:league/:id`      | Player: season numbers, goals by match, profile                                                           |
+| `/news/:id`                | Article: a publisher headline with a link out, or one of our own articles in full; comments               |
+| `/admin`                   | Staff console: overview, news editor, users. English only, not indexed                                    |
 
 English is unprefixed. Russian lives under `/ru`, Romanian under `/ro` (for example
 `/ro/tables/la-liga`). `/?date=YYYY-MM-DD&league=serie-a` selects the day and the filter.
@@ -130,6 +131,37 @@ to the full story, and a comment thread of our own.
   feed per competition; merged lists are capped at six feeds, de-duplicated and sorted by time.
   Video clips are dropped. Headlines stay in the publisher's language, whatever the UI language.
 - Below 900px the design hides the sidebar, so the news moves under the matches instead.
+
+## Admin console
+
+`/admin` is for staff: write and publish news, and see who the users are. It follows
+`design/Pitchside Admin.html`.
+
+- **Signing in.** Admins are ordinary accounts with `role = "admin"` (better-auth's admin
+  plugin). The first one comes from `ADMIN_EMAIL` and `ADMIN_PASSWORD` and is created on the
+  first visit to `/admin/login`. In development, with those unset, the design's demo login
+  works: `admin@pitchside.app` / `pitchside`. **Production has no fallback**, so a password
+  printed in this README can never open a live console.
+- **Every page and every action checks the role on the server**, against the database, on
+  each request. Hiding a button protects nothing: server actions are public endpoints.
+  A member who signs in at `/admin/login` is told they have no access and is signed out.
+- **News.** Articles live in the `article` table and show up in the site's news list and
+  under `/api/v1/news` next to the data source's headlines, so the mobile app gets them too.
+  "Feature on home" pins one to the top. Ours have a body (`NewsArticle.body`) because the
+  text is ours; publisher stories still only link out. The body is plain text, rendered as
+  text, never as HTML.
+- **Scheduling** needs no background job: an article published with a future "Publish at"
+  is simply not served until then. Drafts and scheduled articles answer 404 to readers.
+- **Views** are counted once per browser session by a small beacon, so refreshes and link
+  previews do not inflate them. It is a rough figure for editors.
+- **Users.** Name, email, verified or not, joined, last active, comments, upvotes received and
+  recent comments. "Last active" is when a session was last renewed (at most hourly).
+  The design also shows favourite club, country and match ratings; the app does not collect
+  those, so they are left out rather than invented.
+- **Suspend user** bans the account: its sessions are revoked at once and it cannot sign in
+  until the suspension is lifted. Admins cannot suspend themselves or each other.
+- To make another admin, set `role` to `admin` on their row in the `user` table
+  (`npm run db:studio -w @sports/web`). There is no screen for it on purpose.
 
 ## Languages
 
@@ -274,6 +306,17 @@ Deliberate differences from the prototype:
   stored, with upvotes. Match ratings are not built.
 - **Match groups show a match count**, because the data source has no matchday numbers.
 - **Articles link out** to the publisher for the full text instead of showing a body.
+- **The results ticker** in the navigation shows live and finished matches from today and
+  yesterday, from 1200px up. How many fit is measured from the strip, not from the window,
+  because the rest of the navigation changes width with the language. The order is
+  `latestResults` in `@sports/core`, so the mobile app can show the same strip.
+- **Line-ups are the confirmed teams only.** The design sketches "probable line-ups" before
+  kick-off; the data source has none, so the tab says when they will appear instead of guessing.
+  Rows follow the published formation, and fall back to positions when it does not add up.
+- **Season comparison** has points, wins, goals scored and conceded, read from the league
+  table. The design's clean-sheets row is left out: the source does not publish it.
+- **Player search** filters the loaded list (top 30) in the browser, ignoring accents, and
+  keeps each player's real rank instead of renumbering the matches.
 - **The match column's minimum width is 480px, not 560px**, so the table still sits beside the
   matches at 1280px now that the news sidebar takes 280px.
 

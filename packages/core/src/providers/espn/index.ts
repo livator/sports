@@ -75,6 +75,9 @@ const TRAILING_SLASH = /\/$/;
 /** How long the list of European national teams is reused. */
 const EUROPE_TTL_MS = 6 * 60 * 60_000;
 
+/** Headlines shown on a team page. Clips are dropped after fetching, so ask for more. */
+const TEAM_NEWS_LIMIT = 3;
+const TEAM_NEWS_FETCH = 12;
 /** Most competition feeds merged into one news list. */
 const MAX_NEWS_FEEDS = 6;
 /** Feeds behind an unfiltered news list: the biggest stage plus the top five leagues. */
@@ -314,17 +317,29 @@ export class EspnProvider implements SportsDataProvider {
     type Roster = { athletes?: EspnRosterAthlete[] };
 
     // The team itself is required; the rest degrades to empty lists.
-    const [info, played, upcoming, roster] = await Promise.all([
+    const [info, played, upcoming, roster, feed] = await Promise.all([
       this.request<TeamResponse>(base),
       this.request<Schedule>(`${base}/schedule`).catch(() => ({}) as Schedule),
       this.request<Schedule>(`${base}/schedule`, { fixture: true }).catch(() => ({}) as Schedule),
       this.request<Roster>(`${base}/roster`).catch(() => ({}) as Roster),
+      this.request<EspnNewsFeed>(`/apis/site/v2/sports/soccer/${ESPN_CODES[slug]}/news`, {
+        team: teamId,
+        limit: TEAM_NEWS_FETCH,
+      }).catch(() => ({}) as EspnNewsFeed),
     ]);
     if (!info.team) throw new ProviderError(`ESPN has no team ${teamId} in ${slug}`, 404);
 
     const toMatches = (schedule: Schedule) =>
       (schedule.events ?? []).map((e) => mapEvent(e, slug)).filter((m): m is Match => m !== null);
     const venue = info.team.franchise?.venue?.fullName;
+    const news = mergeNews(
+      [
+        (feed.articles ?? [])
+          .map((item) => mapNewsItem(item, slug) ?? null)
+          .filter((a): a is NewsArticle => a !== null),
+      ],
+      TEAM_NEWS_LIMIT,
+    );
 
     return {
       team: mapTeam(info.team),
@@ -338,6 +353,7 @@ export class EspnProvider implements SportsDataProvider {
         .filter((m) => m.status === 'scheduled' || m.status === 'postponed')
         .sort((a, b) => a.kickoff.localeCompare(b.kickoff)),
       squad: sortSquad((roster.athletes ?? []).map(mapSquadPlayer)),
+      ...(news.length > 0 ? { news } : {}),
     };
   }
 

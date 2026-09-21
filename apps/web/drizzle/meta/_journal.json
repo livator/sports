@@ -15,6 +15,13 @@
       "when": 1789961447744,
       "tag": "0001_nifty_peter_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789964692285,
+      "tag": "0002_fancy_ultimatum",
+      "breakpoints": true
     }
   ]
 }

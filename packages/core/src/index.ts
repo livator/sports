@@ -1,6 +1,7 @@
 export * from './types';
 export * from './leagues';
 export * from './standings';
+export * from './ticker';
 export * from './comments';
 export * from './utils/format';
 export * from './providers/types';

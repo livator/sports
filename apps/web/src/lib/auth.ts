@@ -4,6 +4,7 @@ import { isLocale, type Locale } from '@sports/i18n';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
+import { admin } from 'better-auth/plugins';
 import { getDb, schema } from '@/db';
 import { sendVerificationEmail } from './email';
 
@@ -65,7 +66,9 @@ const createAuth = () =>
     },
     session: {
       expiresIn: 60 * 60 * 24 * 30,
-      updateAge: 60 * 60 * 24,
+      // Sessions are renewed at most hourly. The admin console reads that time as "last active",
+      // so this is also how precise that column is.
+      updateAge: 60 * 60,
     },
     rateLimit: {
       enabled: true,
@@ -78,8 +81,13 @@ const createAuth = () =>
       },
     },
     advanced: { cookiePrefix: 'pitchside' },
-    // Must stay last: lets server actions and route handlers set auth cookies.
-    plugins: [nextCookies()],
+    plugins: [
+      // Roles and suspensions. A suspended ("banned") account cannot open a session, and
+      // suspending one revokes the sessions it already has. Only the "admin" role may use it.
+      admin({ defaultRole: 'user', adminRoles: ['admin'], bannedUserMessage: 'suspended' }),
+      // Must stay last: lets server actions and route handlers set auth cookies.
+      nextCookies(),
+    ],
   });
 
 let instance: ReturnType<typeof createAuth> | undefined;

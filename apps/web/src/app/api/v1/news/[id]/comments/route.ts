@@ -1,13 +1,15 @@
-import type { CommentThread } from '@sports/core';
+import { isOwnArticleId, type CommentThread } from '@sports/core';
+import { NextResponse } from 'next/server';
 import { error } from '@/lib/api';
+import { getLiveArticle } from '@/lib/articles';
 import { postToThread, readThread } from '@/lib/comment-routes';
+import { isArticleId } from '@/lib/news';
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/** Article ids are numeric at the source; anything else is not a thread. */
 async function resolve(params: Ctx['params']) {
   const { id } = await params;
-  if (!/^\d{1,12}$/.test(id)) return null;
+  if (!isArticleId(id)) return null;
   return { type: 'article', articleId: id } satisfies CommentThread;
 }
 
@@ -18,5 +20,14 @@ export async function GET(req: Request, { params }: Ctx) {
 
 export async function POST(req: Request, { params }: Ctx) {
   const thread = await resolve(params);
-  return thread ? postToThread(req, thread) : error('Invalid article id', 400);
+  if (!thread) return error('Invalid article id', 400);
+  // Our own articles must be live, and the editor may have closed the thread.
+  if (isOwnArticleId(thread.articleId)) {
+    const article = await getLiveArticle(thread.articleId);
+    if (!article) return error('No such article', 404);
+    if (article.commentsOpen === false) {
+      return NextResponse.json({ error: 'closed' }, { status: 403 });
+    }
+  }
+  return postToThread(req, thread);
 }

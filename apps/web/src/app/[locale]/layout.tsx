@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Archivo, Inter } from 'next/font/google';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { AuthUiProvider } from '@/components/auth-dialog';
@@ -13,24 +12,9 @@ import { TimeZoneSync } from '@/components/time-zone-sync';
 import { VerifiedNotice } from '@/components/verified-notice';
 import { routing } from '@/i18n/routing';
 import { env } from '@/lib/env';
+import { archivo, cyrillic } from '@/lib/fonts';
 import { getProvider } from '@/lib/provider';
 import '../globals.css';
-
-// latin-ext covers Romanian diacritics. Archivo has no Cyrillic, so Inter's Cyrillic subset sits
-// behind it in the font stack: Latin text and figures stay Archivo, Russian letters use Inter.
-const archivo = Archivo({
-  subsets: ['latin', 'latin-ext'],
-  weight: ['400', '600', '700', '800'],
-  variable: '--font-archivo',
-  display: 'swap',
-});
-const cyrillic = Inter({
-  subsets: ['cyrillic'],
-  weight: ['400', '600', '700', '800'],
-  variable: '--font-cyrillic',
-  display: 'swap',
-  preload: false,
-});
 
 type Props = { children: React.ReactNode; params: Promise<{ locale: string }> };
 

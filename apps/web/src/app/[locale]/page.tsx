@@ -16,6 +16,7 @@ import {
   selectionSlugs,
   type Selection,
 } from '@/lib/competitions';
+import { getNewsFeed } from '@/lib/news';
 import { getProvider, safe } from '@/lib/provider';
 import { viewerToday } from '@/lib/today';
 import { dotted, homeHref } from '@/lib/view';
@@ -69,7 +70,7 @@ export default async function HomePage({ params, searchParams }: Props) {
   // The news follows the competition filter, like the rest of the page.
   const [matches, news] = await Promise.all([
     safe(provider.getMatchesByDate(date)),
-    provider.getNews ? safe(provider.getNews(slugs ?? [], NEWS_COUNT)) : Promise.resolve(null),
+    getNewsFeed(slugs ?? [], NEWS_COUNT),
   ]);
   const shown = slugs ? (matches ?? []).filter((m) => slugs.includes(m.leagueSlug)) : matches;
   const side = sidebarLeague(selection, leagues, shown);
@@ -91,7 +92,7 @@ export default async function HomePage({ params, searchParams }: Props) {
       : selection.kind === 'category'
         ? tc(`categories.${selection.category}`)
         : tn('filterAll');
-  const newsList = provider.getNews ? <NewsList articles={news} filterLabel={newsFilter} /> : null;
+  const newsList = <NewsList articles={news} filterLabel={newsFilter} />;
 
   return (
     <Shell

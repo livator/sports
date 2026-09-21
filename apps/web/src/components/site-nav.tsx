@@ -6,6 +6,7 @@ import { Link, usePathname } from '@/i18n/navigation';
 import { initialsOf } from '@/lib/view';
 import { useAuthUi, useSessionUser } from './auth-dialog';
 import { LanguageSwitch } from './language-switch';
+import { ResultsTicker } from './results-ticker';
 
 const LINKS = [
   { href: '/', key: 'matches', match: (p: string) => p === '/' || p.startsWith('/match') },
@@ -32,6 +33,7 @@ export function SiteNav() {
         <span aria-hidden className="inline-block size-3 bg-accent" />
         Pitchside
       </Link>
+      <ResultsTicker />
       {/* On phones the section links drop to their own row so every language fits. */}
       <div className="order-last flex w-full gap-5 sm:order-none sm:w-auto sm:gap-4">
         {LINKS.map((link) => {

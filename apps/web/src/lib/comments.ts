@@ -12,7 +12,7 @@ const RATE_LIMIT = 5;
 const RATE_WINDOW_MS = 60_000;
 const PAGE_SIZE = 200;
 /** `scope` value for article threads. Match threads use their competition slug. */
-const NEWS_SCOPE = 'news';
+export const NEWS_SCOPE = 'news';
 
 export class CommentError extends Error {
   constructor(

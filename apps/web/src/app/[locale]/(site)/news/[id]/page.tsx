@@ -6,24 +6,29 @@ import { notFound } from 'next/navigation';
 import { Comments } from '@/components/comments';
 import { DataNotice } from '@/components/data-notice';
 import { BackLink } from '@/components/page-header';
+import { ViewBeacon } from '@/components/view-beacon';
 import { competitionName } from '@/lib/competitions';
 import { countComments } from '@/lib/comments';
-import { getProvider, safe } from '@/lib/provider';
+import { getAnyArticle, isArticleId } from '@/lib/news';
+import { safe } from '@/lib/provider';
 
 type Props = { params: Promise<{ locale: Locale; id: string }> };
 
 async function load(id: string): Promise<NewsArticle | null | 'unsupported'> {
-  if (!/^\d{1,12}$/.test(id)) notFound();
-  const provider = getProvider();
-  if (!provider.getArticle) return 'unsupported';
+  if (!isArticleId(id)) notFound();
+  let article: Awaited<ReturnType<typeof getAnyArticle>>;
   try {
-    return await provider.getArticle(id);
+    article = await getAnyArticle(id);
   } catch (error) {
     // An article the publisher does not have is a missing page, not a temporary failure.
     if (error instanceof ProviderError && error.status === 404) notFound();
     console.error('[data]', error instanceof Error ? error.message : error);
     return null;
   }
+  // A draft, a scheduled article or a deleted one: as far as readers know, it does not exist.
+  // Outside the try on purpose: notFound() works by throwing, and the catch would swallow it.
+  if (article === null) notFound();
+  return article;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -58,7 +63,11 @@ export default async function ArticlePage({ params }: Props) {
 
   const format = await getFormatter();
   const league = LEAGUES.find((l) => l.slug === article.leagueSlug);
-  const tag = league ? competitionName(league, tc) : (article.tag ?? t('football'));
+  const section = league ? competitionName(league, tc) : (article.tag ?? t('football'));
+  const tag = article.label ? `${section} · ${article.label}` : section;
+  // Only articles written in our own console have a body; see NewsArticle.
+  const own = article.body !== undefined;
+  const paragraphs = (article.body ?? '').split(/\n\s*\n/).filter((p) => p.trim());
   const when = format.relativeTime(new Date(article.publishedAt), await getNow());
 
   return (
@@ -99,26 +108,40 @@ export default async function ArticlePage({ params }: Props) {
         </figure>
       )}
 
-      {/* The full text belongs to the publisher, so this page links to it instead of copying it. */}
-      <div
-        className={`flex flex-wrap items-center justify-between gap-4 ${article.imageUrl ? '' : 'pt-6'}`}
-      >
-        <p className="max-w-[440px] text-[13px] leading-normal text-ink-2">
-          {t('sourceNote', { source: article.sourceName })}
-        </p>
-        <a
-          href={article.sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn-primary"
+      {own ? (
+        <div className={article.imageUrl ? '' : 'pt-6'}>
+          <ViewBeacon articleId={article.id} />
+          {paragraphs.map((p, i) => (
+            <p key={i} className="mb-4 text-[17px] leading-[1.6] whitespace-pre-line">
+              {p}
+            </p>
+          ))}
+        </div>
+      ) : (
+        /* The full text belongs to the publisher, so this page links to it instead of copying it. */
+        <div
+          className={`flex flex-wrap items-center justify-between gap-4 ${article.imageUrl ? '' : 'pt-6'}`}
         >
-          {t('readFull', { source: article.sourceName })} ↗
-        </a>
-      </div>
+          <p className="max-w-[440px] text-[13px] leading-normal text-ink-2">
+            {t('sourceNote', { source: article.sourceName })}
+          </p>
+          <a
+            href={article.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-primary"
+          >
+            {t('readFull', { source: article.sourceName })} ↗
+          </a>
+        </div>
+      )}
 
       <h2 className="pt-10 pb-2.5 eyebrow">{t('comments', { count: commentCount ?? 0 })}</h2>
       <div className="rule-2" />
-      <Comments thread={{ type: 'article', articleId: article.id }} />
+      <Comments
+        thread={{ type: 'article', articleId: article.id }}
+        {...(article.commentsOpen === false ? { closedNote: t('commentsClosed') } : {})}
+      />
     </section>
   );
 }

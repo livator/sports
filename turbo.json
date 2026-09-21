@@ -16,7 +16,9 @@
     "SMTP_PASS",
     "EMAIL_FROM",
     "EMAIL_DEV_OUTBOX",
-    "NEXT_DIST_DIR"
+    "NEXT_DIST_DIR",
+    "ADMIN_EMAIL",
+    "ADMIN_PASSWORD"
   ],
   "tasks": {
     "build": {

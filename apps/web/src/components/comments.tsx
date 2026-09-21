@@ -22,7 +22,14 @@ type ShownError = Exclude<CommentErrorCode, 'notFound'>;
  * (or an upvote) opens the log in / create account dialog, the draft is kept, and after
  * logging in the comment is posted.
  */
-export function Comments({ thread }: { thread: CommentThread }) {
+export function Comments({
+  thread,
+  closedNote,
+}: {
+  thread: CommentThread;
+  /** Set when the thread takes no new comments; shown in place of the form. */
+  closedNote?: string;
+}) {
   const t = useTranslations('comments');
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
@@ -123,37 +130,41 @@ export function Comments({ thread }: { thread: CommentThread }) {
 
   return (
     <div>
-      <form onSubmit={submit} className="flex flex-col gap-3 border-b-2 pt-5 pb-7">
-        <label className="sr-only" htmlFor="comment-body">
-          {t('label')}
-        </label>
-        <textarea
-          id="comment-body"
-          className="input min-h-[72px] resize-y"
-          placeholder={thread.type === 'article' ? t('placeholderArticle') : t('placeholder')}
-          value={draft}
-          onChange={(e) => updateDraft(e.target.value)}
-          maxLength={COMMENT_MAX_LENGTH * 2}
-        />
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="text-[13px] text-ink-2">
-            {user ? t('postingAs', { name: user.name }) : t('guestHint')}
-            {remaining <= 100 && (
-              <span className={`ml-2 tnum ${remaining < 0 ? 'text-accent-700' : 'text-ink-3'}`}>
-                {t('remaining', { count: remaining })}
-              </span>
-            )}
-          </span>
-          <button type="submit" className="btn btn-primary" disabled={post.isPending}>
-            {post.isPending ? t('posting') : t('post')}
-          </button>
-        </div>
-        {error && (
-          <p role="alert" className="text-[13px] text-accent-700">
-            {t(`errors.${error}`, { max: COMMENT_MAX_LENGTH })}
-          </p>
-        )}
-      </form>
+      {closedNote ? (
+        <p className="border-b-2 py-5 text-sm text-ink-2">{closedNote}</p>
+      ) : (
+        <form onSubmit={submit} className="flex flex-col gap-3 border-b-2 pt-5 pb-7">
+          <label className="sr-only" htmlFor="comment-body">
+            {t('label')}
+          </label>
+          <textarea
+            id="comment-body"
+            className="input min-h-[72px] resize-y"
+            placeholder={thread.type === 'article' ? t('placeholderArticle') : t('placeholder')}
+            value={draft}
+            onChange={(e) => updateDraft(e.target.value)}
+            maxLength={COMMENT_MAX_LENGTH * 2}
+          />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="text-[13px] text-ink-2">
+              {user ? t('postingAs', { name: user.name }) : t('guestHint')}
+              {remaining <= 100 && (
+                <span className={`ml-2 tnum ${remaining < 0 ? 'text-accent-700' : 'text-ink-3'}`}>
+                  {t('remaining', { count: remaining })}
+                </span>
+              )}
+            </span>
+            <button type="submit" className="btn btn-primary" disabled={post.isPending}>
+              {post.isPending ? t('posting') : t('post')}
+            </button>
+          </div>
+          {error && (
+            <p role="alert" className="text-[13px] text-accent-700">
+              {t(`errors.${error}`, { max: COMMENT_MAX_LENGTH })}
+            </p>
+          )}
+        </form>
+      )}
 
       {comments.isPending ? (
         <p className="py-6 text-sm text-ink-2">{t('loading')}</p>

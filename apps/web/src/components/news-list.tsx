@@ -9,7 +9,8 @@ export function useNewsTag(): (article: NewsArticle) => string {
   const tc = useTranslations('competitions');
   return (article) => {
     const league = LEAGUES.find((l) => l.slug === article.leagueSlug);
-    return league ? competitionName(league, tc) : (article.tag ?? t('football'));
+    const base = league ? competitionName(league, tc) : (article.tag ?? t('football'));
+    return article.label ? `${base} · ${article.label}` : base;
   };
 }
 
@@ -17,10 +18,13 @@ export function useNewsTag(): (article: NewsArticle) => string {
 export function NewsList({
   articles,
   filterLabel,
+  heading,
 }: {
   articles: NewsArticle[] | null;
   /** What the list is filtered to, shown on the right of the heading. */
-  filterLabel: string;
+  filterLabel?: string;
+  /** Defaults to "Latest news". */
+  heading?: string;
 }) {
   const t = useTranslations('news');
   const format = useFormatter();
@@ -30,8 +34,8 @@ export function NewsList({
   return (
     <section>
       <div className="flex items-baseline justify-between gap-3 pb-2.5">
-        <h2 className="flex-none eyebrow">{t('latest')}</h2>
-        <span className="min-w-0 truncate text-xs text-ink-3">{filterLabel}</span>
+        <h2 className="flex-none eyebrow">{heading ?? t('latest')}</h2>
+        {filterLabel && <span className="min-w-0 truncate text-xs text-ink-3">{filterLabel}</span>}
       </div>
       <div className="rule-2" />
       {!articles ? (
