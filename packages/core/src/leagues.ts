@@ -11,7 +11,7 @@ const standardZones = {
 const logo = (id: number) => `https://a.espncdn.com/i/leaguelogos/soccer/500/${id}.png`;
 
 type Domestic = Pick<League, 'slug' | 'name' | 'shortName' | 'country' | 'countryCode'> &
-  Partial<Pick<League, 'logoUrl' | 'externalCode' | 'teamCount' | 'zones'>>;
+  Partial<Pick<League, 'logoUrl' | 'externalCode' | 'teamCount' | 'zones' | 'hasScorers'>>;
 
 const domestic = (category: 'top5' | 'more', l: Domestic): League => ({
   category,
@@ -141,6 +141,38 @@ export const LEAGUES: readonly League[] = [
     zones: { ...standardZones, relegation: 2, relegationPlayoff: 1 },
   }),
 
+  /*
+   * ESPN has no current data for these three, so they come from TheSportsDB (see
+   * providers/thesportsdb). That source publishes no scorer lists, and says nothing about
+   * what a table position means, so there are no zone markers either.
+   */
+  domestic('more', {
+    slug: 'romanian-superliga',
+    name: 'SuperLiga România',
+    shortName: 'Romania',
+    country: 'Romania',
+    countryCode: 'RO',
+    teamCount: 16,
+    hasScorers: false,
+  }),
+  domestic('more', {
+    slug: 'moldovan-super-liga',
+    name: 'Super Liga Moldova',
+    shortName: 'Moldova',
+    country: 'Moldova',
+    countryCode: 'MD',
+    teamCount: 8,
+    hasScorers: false,
+  }),
+  domestic('more', {
+    slug: 'ukrainian-premier-league',
+    name: 'Ukrainian Premier League',
+    shortName: 'Ukraine',
+    country: 'Ukraine',
+    countryCode: 'UA',
+    teamCount: 16,
+    hasScorers: false,
+  }),
   domestic('more', {
     slug: 'eredivisie',
     name: 'Eredivisie',

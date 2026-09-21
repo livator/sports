@@ -19,7 +19,8 @@
     "sourceEspn": "Data and crests via ESPN",
     "sourceFootballData": "Data and crests via football-data.org",
     "sourceMock": "Demo data",
-    "localTimes": "times in your local time"
+    "localTimes": "times in your local time",
+    "sourceEspnTsdb": "Data and crests via ESPN and TheSportsDB"
   },
   "days": {
     "today": "Today",

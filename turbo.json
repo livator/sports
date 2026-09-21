@@ -19,7 +19,9 @@
     "NEXT_DIST_DIR",
     "ADMIN_EMAIL",
     "ADMIN_PASSWORD",
-    "UPLOADS_DIR"
+    "UPLOADS_DIR",
+    "THESPORTSDB_API_KEY",
+    "TSDB_CACHE_DIR"
   ],
   "tasks": {
     "build": {

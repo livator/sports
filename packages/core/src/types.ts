@@ -23,6 +23,9 @@ export type LeagueSlug =
   | 'euro-qualifying'
   | 'friendlies'
   // Other European domestic leagues
+  | 'romanian-superliga'
+  | 'moldovan-super-liga'
+  | 'ukrainian-premier-league'
   | 'eredivisie'
   | 'primeira-liga'
   | 'belgian-pro-league'

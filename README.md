@@ -1,6 +1,6 @@
 # Pitchside
 
-Live scores, results, tables and players for European football: the top 5 leagues, eleven more
+Live scores, results, tables and players for European football: the top 5 leagues, fourteen more
 domestic leagues, the three UEFA club competitions and national-team games, with real data and
 real crests. Available in English, Russian and Romanian, with accounts and match comments.
 
@@ -71,19 +71,20 @@ when the configured source cannot serve them.
 
 ## Competitions
 
-Twenty-two competitions, in four categories. The order below is the display order everywhere,
+Twenty-five competitions, in four categories. The order below is the display order everywhere,
 so a Champions League night leads the scoreboard with no special casing.
 
-| Category   | Competitions                                                                                                                                                                                 |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `uefa`     | Champions League, Europa League, Conference League                                                                                                                                           |
-| `national` | Nations League, Euro Qualifying, International Friendlies                                                                                                                                    |
-| `top5`     | Premier League, LaLiga, Serie A, Bundesliga, Ligue 1                                                                                                                                         |
-| `more`     | Eredivisie, Primeira Liga, Belgian Pro League, Süper Lig, Scottish Premiership, Super League Greece, Austrian Bundesliga, Danish Superliga, Allsvenskan, Eliteserien, Russian Premier League |
+| Category   | Competitions                                                                                                                                                                                                                                                  |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `uefa`     | Champions League, Europa League, Conference League                                                                                                                                                                                                            |
+| `national` | Nations League, Euro Qualifying, International Friendlies                                                                                                                                                                                                     |
+| `top5`     | Premier League, LaLiga, Serie A, Bundesliga, Ligue 1                                                                                                                                                                                                          |
+| `more`     | SuperLiga România, Super Liga Moldova, Ukrainian Premier League, Eredivisie, Primeira Liga, Belgian Pro League, Süper Lig, Scottish Premiership, Super League Greece, Austrian Bundesliga, Danish Superliga, Allsvenskan, Eliteserien, Russian Premier League |
 
 - Everything is configured in `packages/core/src/leagues.ts`. To add a competition: add its slug
-  to `LeagueSlug`, an entry to `LEAGUES`, and its code to `ESPN_CODES` in the ESPN provider.
-  The compiler flags whatever is missing. UEFA and national-team names are translated in
+  to `LeagueSlug`, an entry to `LEAGUES`, and its code to the provider that has it (`ESPN_CODES`,
+  or `TSDB_LEAGUES` in the TheSportsDB provider).
+  UEFA and national-team names are translated in
   `@sports/i18n` (`competitions.names`); domestic league names are proper nouns and are not.
 - Pickers are two-level (category, then competition) so they fit a phone. `?league=` accepts a
   category key (`uefa`) or a competition slug (`champions-league`).
@@ -94,9 +95,12 @@ so a Champions League night leads the scoreboard with no special casing.
   (Nations League has 14). `Standings.rows` always holds every row for lookups.
 - `hasTable` and `hasScorers` switch screens off where there is nothing to show: friendlies
   have no table, and national-team competitions publish no scorer list.
-- Providers report what they cover through `getLeagues()`. ESPN covers all 22, football-data.org
+- Providers report what they cover through `getLeagues()`, and `CompositeProvider` sends each
+  league to the first source that lists it. ESPN covers 22 competitions and is the main source;
+  TheSportsDB covers Romania, Moldova and Ukraine, where ESPN has no current data (its Romanian
+  feed stops in September 2025, and it has neither of the other two). football-data.org covers
   the ones with an `externalCode`, the demo provider the top five.
-- Romania's Liga 1 and the Swiss Super League are not included: ESPN has no current season for them.
+- The Swiss Super League is not included: no source in use has a current season for it.
 
 ## Getting started
 
@@ -321,6 +325,44 @@ guarantee, so treat it as a convenience for development and personal use.
 - Player profiles live on a second host (`site.web.api.espn.com`). Most players have no headshot.
 - Crests and league logos are served from ESPN's CDN. They are trademarks of the clubs and
   leagues. Check licensing before running this commercially, and swap the provider if needed.
+
+## About the TheSportsDB source
+
+`TheSportsDbProvider` serves SuperLiga România, Super Liga Moldova and the Ukrainian Premier
+League from [TheSportsDB](https://www.thesportsdb.com). It works without signing up, on the
+public test key, and that key's limits shape the whole adapter:
+
+- The free key cuts season lists short and returns only five rows of a league table, but it
+  returns every match of a single round. So **the table is computed from the results**, round by
+  round, with the same `computeStandings` the demo provider uses. It therefore always agrees
+  with the results the app shows. It can differ from the source's own table, which comes from a
+  different feed: at the time of writing the two disagree about one Ukrainian result.
+- A table is never built from part of the rounds. If one round cannot be read the table fails,
+  because a table from the rounds that happened to load is a wrong table that looks right.
+- Romania and Moldova follow the regular season with a play-off phase with its own points rules
+  (halved, or reset). The computed table stops at the end of the regular season (`regularRounds`).
+- **About 30 requests a minute.** The provider counts its own requests and stays under that,
+  shares identical requests, reuses a round for as long as its freshness allows (45 seconds when
+  something in it is live, a quarter of an hour otherwise, half a day once it is over), and hands
+  out a slightly old answer while it fetches a new one in the background.
+- Answers are kept on disk (`apps/web/data/cache/thesportsdb`, or `TSDB_CACHE_DIR`) so a restart
+  does not start from nothing. **The very first start is slow for these three leagues:** the
+  tables need about fifty requests, so they take roughly three minutes to appear, and until then
+  their pages say the data is still loading. The scoreboard never waits for this source for more
+  than 2.5 seconds; its leagues are simply left out of that answer. A Patreon key
+  (`THESPORTSDB_API_KEY`) raises the limit and shortens that first start.
+- This source deliberately bypasses the Next.js data cache (`cache: "no-store"`). That cache
+  refreshes stale entries on its own, outside the request budget, and route handlers wait for
+  those refreshes before answering.
+- It has no goalscorers, line-ups, match statistics, squads or scorer lists for these leagues.
+  Match pages show the score, venue, recent form and this season's meetings (both worked out
+  from the results); team pages show results and fixtures; there is no "Players" list.
+- Clubs have no three-letter codes there, so `tlaOf` makes them ("Universitatea Craiova" is UCR,
+  "Universitatea Cluj" is UCL). Ids are prefixed `tsdb-` so they never collide with ESPN's.
+
+Both providers give every upstream request a hard timeout (8 and 10 seconds). Node's own limits
+are about five minutes each for headers and body, and one stuck connection used to be able to
+hold a response for that long.
 
 ## Design
 

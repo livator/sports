@@ -9,5 +9,13 @@ export { MockProvider, type MockProviderOptions } from './providers/mock';
 export { SEED_TEAMS } from './providers/mock/teams';
 export { FootballDataProvider, type FootballDataProviderOptions } from './providers/football-data';
 export { EspnProvider, type EspnProviderOptions } from './providers/espn';
+export {
+  TheSportsDbProvider,
+  type Freshness as TheSportsDbFreshness,
+  type TheSportsDbEntry,
+  type TheSportsDbProviderOptions,
+  type TheSportsDbStore,
+} from './providers/thesportsdb';
+export { CompositeProvider } from './providers/composite';
 export { mapNewsItem, mergeNews } from './providers/espn/news';
 export { HttpProvider, type HttpProviderOptions } from './providers/http';

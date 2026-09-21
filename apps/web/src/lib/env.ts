@@ -11,6 +11,11 @@ export const env = {
     const key = process.env.FOOTBALL_DATA_API_KEY?.trim();
     return key ? key : undefined;
   },
+  /** Optional. Without it TheSportsDB's public test key is used, which is slower to warm up. */
+  get theSportsDbApiKey(): string | undefined {
+    const key = process.env.THESPORTSDB_API_KEY?.trim();
+    return key ? key : undefined;
+  },
   get appUrl(): string {
     return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'http://localhost:3000';
   },

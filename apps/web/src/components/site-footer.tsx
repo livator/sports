@@ -1,10 +1,13 @@
 import { useTranslations } from 'next-intl';
 
-export function SiteFooter({ source }: { source: string }) {
+export function SiteFooter({ sources }: { sources: readonly string[] }) {
+  const [source] = sources;
   const t = useTranslations('footer');
   const credit =
     source === 'espn'
-      ? t('sourceEspn')
+      ? sources.includes('thesportsdb')
+        ? t('sourceEspnTsdb')
+        : t('sourceEspn')
       : source === 'football-data.org'
         ? t('sourceFootballData')
         : t('sourceMock');

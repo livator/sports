@@ -19,7 +19,8 @@
     "sourceEspn": "Date și sigle de la ESPN",
     "sourceFootballData": "Date și sigle de la football-data.org",
     "sourceMock": "Date demonstrative",
-    "localTimes": "orele sunt în fusul tău orar"
+    "localTimes": "orele sunt în fusul tău orar",
+    "sourceEspnTsdb": "Date și sigle de la ESPN și TheSportsDB"
   },
   "days": {
     "today": "Azi",

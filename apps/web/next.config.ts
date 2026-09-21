@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: 'a.espncdn.com' },
       { protocol: 'https', hostname: 'crests.football-data.org' },
+      // Club badges for the leagues served by TheSportsDB.
+      { protocol: 'https', hostname: 'r2.thesportsdb.com' },
+      { protocol: 'https', hostname: 'www.thesportsdb.com' },
     ],
     // Crests never change at a given URL; keep optimised copies for a month.
     minimumCacheTTL: 60 * 60 * 24 * 30,

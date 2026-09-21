@@ -44,8 +44,11 @@ import {
   type EspnTeam,
 } from './mappers';
 
-/** ESPN's competition codes. The Record type makes a missing competition a compile error. */
-const ESPN_CODES: Record<LeagueSlug, string> = {
+/**
+ * ESPN's competition codes. A league without one is not served by this provider: ESPN has no
+ * current data for it, and another source covers it (see CompositeProvider).
+ */
+const ESPN_CODES: Partial<Record<LeagueSlug, string>> = {
   'champions-league': 'uefa.champions',
   'europa-league': 'uefa.europa',
   'conference-league': 'uefa.europa.conf',
@@ -70,6 +73,15 @@ const ESPN_CODES: Record<LeagueSlug, string> = {
   'russian-premier-league': 'rus.1',
 };
 
+const COVERED = LEAGUES.filter((l) => ESPN_CODES[l.slug] !== undefined);
+
+/** The code for a league, or a 404 for one this provider does not serve. */
+function codeOf(slug: LeagueSlug): string {
+  const code = ESPN_CODES[slug];
+  if (!code) throw new ProviderError(`ESPN does not cover ${slug}`, 404);
+  return code;
+}
+
 const TRAILING_SLASH = /\/$/;
 
 /** How long the list of European national teams is reused. */
@@ -89,6 +101,13 @@ const DEFAULT_NEWS_FEEDS: readonly LeagueSlug[] = [
   'bundesliga',
   'ligue-1',
 ];
+
+/**
+ * No request may outlive this. Node's own limits are about five minutes each for the headers
+ * and for the body, and a framework that waits for background refreshes before answering
+ * (Next.js does) would hold a page for that long because of one stuck connection.
+ */
+const REQUEST_TIMEOUT_MS = 8_000;
 
 /** Upper bound on month requests for a single getMatches call. */
 const MAX_MONTHS = 12;
@@ -163,7 +182,10 @@ export class EspnProvider implements SportsDataProvider {
   private async send<T>(url: URL, path: string): Promise<T> {
     let res: Response;
     try {
-      res = await this.fetchFn(url, this.requestInit(url));
+      res = await this.fetchFn(url, {
+        ...this.requestInit(url),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
     } catch (cause) {
       throw new ProviderError(`Network error calling ${path}`, undefined, { cause });
     }
@@ -173,7 +195,7 @@ export class EspnProvider implements SportsDataProvider {
 
   private async scoreboard(slug: LeagueSlug, dates?: string): Promise<EspnScoreboard> {
     return this.request<EspnScoreboard>(
-      `/apis/site/v2/sports/soccer/${ESPN_CODES[slug]}/scoreboard`,
+      `/apis/site/v2/sports/soccer/${codeOf(slug)}/scoreboard`,
       dates ? { dates, limit: 400 } : {},
     );
   }
@@ -192,7 +214,7 @@ export class EspnProvider implements SportsDataProvider {
     }
     try {
       const table = await this.request<EspnStandings>(
-        `/apis/v2/sports/soccer/${ESPN_CODES['nations-league']}/standings`,
+        `/apis/v2/sports/soccer/${codeOf('nations-league')}/standings`,
       );
       const ids = new Set(mapStandings(table).map((row) => row.team.id));
       if (ids.size === 0) return null;
@@ -216,7 +238,7 @@ export class EspnProvider implements SportsDataProvider {
   }
 
   getLeagues(): Promise<League[]> {
-    return Promise.resolve([...LEAGUES]);
+    return Promise.resolve([...COVERED]);
   }
 
   async getSeason(slug: LeagueSlug): Promise<Season> {
@@ -248,7 +270,7 @@ export class EspnProvider implements SportsDataProvider {
     ).slice(0, 7);
 
     const [data, recent] = await Promise.all([
-      this.request<EspnStandings>(`/apis/v2/sports/soccer/${ESPN_CODES[slug]}/standings`),
+      this.request<EspnStandings>(`/apis/v2/sports/soccer/${codeOf(slug)}/standings`),
       // Form is not part of the standings feed; derive it from recent results. Best effort.
       options.includeForm === false
         ? Promise.resolve([] as Match[])
@@ -297,11 +319,11 @@ export class EspnProvider implements SportsDataProvider {
   async getTopScorers(slug: LeagueSlug, limit = 10): Promise<Scorer[]> {
     if (!getLeague(slug).hasScorers) return [];
     const data = await this.request<EspnStatistics>(
-      `/apis/site/v2/sports/soccer/${ESPN_CODES[slug]}/statistics`,
+      `/apis/site/v2/sports/soccer/${codeOf(slug)}/statistics`,
     );
     // The statistics feed only carries full club names; the table has the short names.
     const table = await this.request<EspnStandings>(
-      `/apis/v2/sports/soccer/${ESPN_CODES[slug]}/standings`,
+      `/apis/v2/sports/soccer/${codeOf(slug)}/standings`,
     ).catch(() => null);
     const clubs = new Map((table ? mapStandings(table) : []).map((row) => [row.team.id, row.team]));
     return mapScorers(data, limit).map((s) => ({ ...s, team: clubs.get(s.team.id) ?? s.team }));
@@ -309,14 +331,14 @@ export class EspnProvider implements SportsDataProvider {
 
   async getMatchesByDate(date: string): Promise<Match[]> {
     const dates = date.replaceAll('-', '');
-    const all = await Promise.all(LEAGUES.map((l) => this.matchesFor(l.slug, dates)));
+    const all = await Promise.all(COVERED.map((l) => this.matchesFor(l.slug, dates)));
     return all.flat().sort((a, b) => a.kickoff.localeCompare(b.kickoff));
   }
 
   async getMatch(slug: LeagueSlug, matchId: string): Promise<MatchDetail> {
     getLeague(slug);
     const data = await this.request<EspnSummary>(
-      `/apis/site/v2/sports/soccer/${ESPN_CODES[slug]}/summary`,
+      `/apis/site/v2/sports/soccer/${codeOf(slug)}/summary`,
       { event: matchId },
     );
     const detail = mapMatchDetail(data, slug, matchId);
@@ -326,7 +348,7 @@ export class EspnProvider implements SportsDataProvider {
 
   async getTeam(slug: LeagueSlug, teamId: string): Promise<TeamDetail> {
     getLeague(slug);
-    const base = `/apis/site/v2/sports/soccer/${ESPN_CODES[slug]}/teams/${encodeURIComponent(teamId)}`;
+    const base = `/apis/site/v2/sports/soccer/${codeOf(slug)}/teams/${encodeURIComponent(teamId)}`;
     type TeamResponse = {
       team?: EspnTeam & { standingSummary?: string; franchise?: { venue?: { fullName?: string } } };
     };
@@ -339,7 +361,7 @@ export class EspnProvider implements SportsDataProvider {
       this.request<Schedule>(`${base}/schedule`).catch(() => ({}) as Schedule),
       this.request<Schedule>(`${base}/schedule`, { fixture: true }).catch(() => ({}) as Schedule),
       this.request<Roster>(`${base}/roster`).catch(() => ({}) as Roster),
-      this.request<EspnNewsFeed>(`/apis/site/v2/sports/soccer/${ESPN_CODES[slug]}/news`, {
+      this.request<EspnNewsFeed>(`/apis/site/v2/sports/soccer/${codeOf(slug)}/news`, {
         team: teamId,
         limit: TEAM_NEWS_FETCH,
       }).catch(() => ({}) as EspnNewsFeed),
@@ -376,7 +398,7 @@ export class EspnProvider implements SportsDataProvider {
 
   async getPlayer(slug: LeagueSlug, playerId: string): Promise<PlayerDetail> {
     getLeague(slug);
-    const base = `/apis/common/v3/sports/soccer/${ESPN_CODES[slug]}/athletes/${encodeURIComponent(playerId)}`;
+    const base = `/apis/common/v3/sports/soccer/${codeOf(slug)}/athletes/${encodeURIComponent(playerId)}`;
     const [profile, log] = await Promise.all([
       this.request<EspnAthleteProfile>(base, {}, this.webBaseUrl),
       this.request<EspnGameLog>(`${base}/gamelog`, {}, this.webBaseUrl).catch(() => null),
@@ -388,10 +410,13 @@ export class EspnProvider implements SportsDataProvider {
 
   async getNews(leagues: readonly LeagueSlug[], limit = 8): Promise<NewsArticle[]> {
     // One feed per competition. Cap the fan-out: a whole category can be a dozen leagues.
-    const slugs = leagues.length > 0 ? leagues.slice(0, MAX_NEWS_FEEDS) : DEFAULT_NEWS_FEEDS;
+    // Leagues ESPN does not cover have no feed here; asking only for those yields nothing.
+    const covered = leagues.filter((slug) => ESPN_CODES[slug] !== undefined);
+    if (leagues.length > 0 && covered.length === 0) return [];
+    const slugs = covered.length > 0 ? covered.slice(0, MAX_NEWS_FEEDS) : DEFAULT_NEWS_FEEDS;
     const lists = await Promise.all(
       slugs.map((slug) =>
-        this.request<EspnNewsFeed>(`/apis/site/v2/sports/soccer/${ESPN_CODES[slug]}/news`, {
+        this.request<EspnNewsFeed>(`/apis/site/v2/sports/soccer/${codeOf(slug)}/news`, {
           // Video clips are dropped after fetching, so ask for more than we need.
           limit: Math.min(50, limit * 3),
         })

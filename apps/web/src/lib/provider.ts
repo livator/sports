@@ -1,12 +1,15 @@
 import 'server-only';
 
 import {
+  CompositeProvider,
   EspnProvider,
   FootballDataProvider,
   MockProvider,
+  TheSportsDbProvider,
   type SportsDataProvider,
 } from '@sports/core';
 import { env } from './env';
+import { tsdbFileStore } from './tsdb-store';
 
 let instance: SportsDataProvider | undefined;
 
@@ -39,7 +42,21 @@ function create(): SportsDataProvider {
       });
     }
     default:
-      return new EspnProvider({ requestInit: espnRequestInit });
+      // ESPN for everything it covers; TheSportsDB for Romania, Moldova and Ukraine.
+      return new CompositeProvider([
+        new EspnProvider({ requestInit: espnRequestInit }),
+        new TheSportsDbProvider({
+          ...(env.theSportsDbApiKey ? { apiKey: env.theSportsDbApiKey } : {}),
+          /*
+           * Not through the Next.js data cache, unlike ESPN. That cache refreshes stale entries
+           * on its own, outside this provider's request budget (the free key allows about 30 a
+           * minute), and route handlers wait for those refreshes before answering. The provider
+           * keeps its own answers instead, on disk, and refreshes them within the budget.
+           */
+          requestInit: () => ({ cache: 'no-store' }),
+          store: tsdbFileStore,
+        }),
+      ]);
   }
 }
 
@@ -50,6 +67,12 @@ function create(): SportsDataProvider {
 export function getProvider(): SportsDataProvider {
   instance ??= create();
   return instance;
+}
+
+/** Every source behind the provider, for crediting them in the footer. */
+export function dataSources(): readonly string[] {
+  const provider = getProvider();
+  return provider instanceof CompositeProvider ? provider.sources : [provider.name];
 }
 
 export function isDemoData(): boolean {

@@ -14,7 +14,7 @@ import { VerifiedNotice } from '@/components/verified-notice';
 import { routing } from '@/i18n/routing';
 import { env } from '@/lib/env';
 import { archivo, cyrillic } from '@/lib/fonts';
-import { getProvider } from '@/lib/provider';
+import { dataSources } from '@/lib/provider';
 import '../globals.css';
 
 type Props = { children: React.ReactNode; params: Promise<{ locale: string }> };
@@ -64,7 +64,7 @@ export default async function LocaleLayout({ children, params }: Props) {
                       <VerifiedNotice />
                     </Suspense>
                     {children}
-                    <SiteFooter source={getProvider().name} />
+                    <SiteFooter sources={dataSources()} />
                   </div>
                 </PendingNavProvider>
               </AuthUiProvider>

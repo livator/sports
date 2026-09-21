@@ -19,7 +19,8 @@
     "sourceEspn": "Данные и эмблемы: ESPN",
     "sourceFootballData": "Данные и эмблемы: football-data.org",
     "sourceMock": "Демонстрационные данные",
-    "localTimes": "время указано по вашему часовому поясу"
+    "localTimes": "время указано по вашему часовому поясу",
+    "sourceEspnTsdb": "Данные и эмблемы: ESPN и TheSportsDB"
   },
   "days": {
     "today": "Сегодня",
