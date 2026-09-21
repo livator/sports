@@ -57,6 +57,17 @@
     color-scheme: light;
   }
 
+  /*
+   * While a filter, day or story is loading (see PendingNavProvider). "progress" rather than
+   * "wait": the page still works, it is only busy. It has to win over the pointer cursor that
+   * links and buttons set for themselves, because the thing under the mouse is usually the
+   * link that was just clicked.
+   */
+  :root[data-navigating],
+  :root[data-navigating] * {
+    cursor: progress !important;
+  }
+
   html {
     -webkit-text-size-adjust: 100%;
   }

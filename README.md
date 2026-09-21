@@ -136,6 +136,13 @@ Picking a competition should feel instant, and it is built in four layers:
 - **Warm-up after the response.** `after()` runs `warmCompetitions` for the competitions one
   click away, a few at a time and at most once per ten minutes each, so the next click finds
   its data cached. The provider also shares one in-flight request per URL.
+- **Days work the same way.** The day switcher and the date heading follow the click at once.
+  The scoreboard preloads the matches of the days the switcher offers (`usePrefetchMatchesByDate`),
+  so a clicked day usually shows its matches from the browser's cache; otherwise the current list
+  stays up, dimmed, until the new one arrives. On the server, a single day's ESPN scoreboard is
+  cached for 30 seconds only from yesterday to tomorrow; a finished day keeps for six hours and a
+  day further ahead for fifteen minutes. The scoreboard waits at most 1.2 seconds for the second
+  data source.
 - **No link prefetching** (`@/i18n/navigation`). Pages are rendered per request, so a prefetch
   brings back nothing reusable, and dozens of them per view queue ahead of the real click.
 

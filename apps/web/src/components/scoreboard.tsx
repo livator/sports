@@ -1,7 +1,7 @@
 'use client';
 
 import { LEAGUES, isLive, type LeagueSlug, type Match } from '@sports/core';
-import { useMatchesByDate } from '@sports/query';
+import { useMatchesByDate, usePrefetchMatchesByDate } from '@sports/query';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -11,6 +11,7 @@ import { matchHref, sideWeight, statusLabel, statusTone, toneClass } from '@/lib
 import { useFavourites } from './favourites';
 import { LocalTime } from './local-time';
 import { MatchRow } from './match-row';
+import { daysAround } from './day-switcher';
 import { PendingRegion, usePendingNav } from './pending-nav';
 
 const stripEdge = {
@@ -23,20 +24,29 @@ const stripOrder = { live: 0, done: 1, upcoming: 2 };
 type Scope = 'all' | 'category' | 'league';
 
 /**
- * The filter a clicked competition chip is heading for, when it only changes the competition
- * and not the day. Every match of the day is already in the browser, so the list can follow
- * the click at once and leave only the table and the news to the server.
+ * What a clicked competition chip or day is heading for. Every match of the day is already in
+ * the browser, and the neighbouring days are loaded ahead of time, so the list can follow the
+ * click at once and leave only the table and the news to the server.
  */
-function useHeadingFilter(): { slugs: LeagueSlug[] | null; scope: Scope } | null {
+function useHeadingFilter(today: string): {
+  slugs: LeagueSlug[] | null;
+  scope: Scope;
+  /** The day being headed for, when the click changes the day. */
+  date: string | null;
+} | null {
   const { pendingHref } = usePendingNav();
   const current = useSearchParams();
   if (pendingHref === null) return null;
   const target = new URL(pendingHref, 'http://local');
-  if (target.pathname !== '/' || target.searchParams.get('date') !== current.get('date')) {
-    return null;
-  }
+  if (target.pathname !== '/') return null;
   const selection = parseSelection(target.searchParams.get('league') ?? undefined, LEAGUES);
-  return { slugs: selectionSlugs(selection, LEAGUES), scope: selection.kind };
+  const sameDay = target.searchParams.get('date') === current.get('date');
+  return {
+    slugs: selectionSlugs(selection, LEAGUES),
+    scope: selection.kind,
+    // No date in the address means today.
+    date: sameDay ? null : (target.searchParams.get('date') ?? today),
+  };
 }
 
 /** Compact card for the horizontal strip: live first, then results, then fixtures. */
@@ -122,6 +132,7 @@ function Group({
  */
 export function Scoreboard({
   date,
+  today,
   slugs,
   scope,
   initialMatches,
@@ -129,6 +140,8 @@ export function Scoreboard({
   aside,
 }: {
   date: string;
+  /** The viewer's own today, which is what an address without a date means. */
+  today: string;
   /** Competitions to show, or null for all of them. */
   slugs: LeagueSlug[] | null;
   /** How wide the filter is, which picks the right "nothing on today" message. */
@@ -140,13 +153,17 @@ export function Scoreboard({
   const t = useTranslations('home');
   const tc = useTranslations('competitions');
   const { favs } = useFavourites();
-  const { data, isError } = useMatchesByDate(
-    date,
-    initialMatches ? { initialData: initialMatches } : {},
-  );
-
-  // What the server rendered, unless a chip was just clicked: then what it is heading for.
-  const view = useHeadingFilter() ?? { slugs, scope };
+  // What the server rendered, unless a chip or a day was just clicked: then what that is
+  // heading for. The neighbouring days are loaded ahead of time, so a clicked day usually
+  // shows its matches at once; if it is not there yet, the current list stays up meanwhile.
+  const heading = useHeadingFilter(today);
+  const view = heading ?? { slugs, scope };
+  const shownDate = heading?.date ?? date;
+  const { data, isError, isPlaceholderData } = useMatchesByDate(shownDate, {
+    ...(shownDate === date && initialMatches ? { initialData: initialMatches } : {}),
+    keepPrevious: true,
+  });
+  usePrefetchMatchesByDate(daysAround(date, today).filter((d) => d !== date));
 
   const all = data ?? [];
   const wanted = view.slugs ? new Set<string>(view.slugs) : null;
@@ -189,7 +206,10 @@ export function Scoreboard({
 
       <div className="flex flex-wrap gap-x-14 gap-y-10 pt-8">
         {/* 480 rather than the design's 560: with the news sidebar, 560 pushes the table below the matches at 1280px. */}
-        <div className="min-w-0 flex-[1_1_480px]">
+        <div
+          className={`min-w-0 flex-[1_1_480px] transition-opacity ${isPlaceholderData ? 'opacity-50' : ''}`}
+          aria-busy={isPlaceholderData}
+        >
           {!data ? (
             <p className="py-12 text-[17px] text-ink-2">{isError ? t('feedDown') : t('loading')}</p>
           ) : filtered.length === 0 ? (

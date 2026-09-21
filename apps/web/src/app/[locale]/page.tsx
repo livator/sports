@@ -3,7 +3,7 @@ import type { Locale } from '@sports/i18n';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { after } from 'next/server';
 import { CompetitionNav } from '@/components/competition-nav';
-import { DaySwitcher, dayLabel } from '@/components/day-switcher';
+import { DayHeading, DaySwitcher } from '@/components/day-switcher';
 import { HomeAside } from '@/components/home-aside';
 import { NewsList } from '@/components/news-list';
 import { PendingRegion } from '@/components/pending-nav';
@@ -22,7 +22,7 @@ import { getNewsFeed } from '@/lib/news';
 import { getProvider, safe } from '@/lib/provider';
 import { viewerToday } from '@/lib/today';
 import { warmCompetitions } from '@/lib/warm';
-import { dotted, homeHref } from '@/lib/view';
+import { homeHref } from '@/lib/view';
 
 type Props = {
   params: Promise<{ locale: Locale }>;
@@ -71,7 +71,6 @@ export default async function HomePage({ params, searchParams }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations('home');
-  const td = await getTranslations('days');
   const tn = await getTranslations('news');
   const tc = await getTranslations('competitions');
 
@@ -110,13 +109,6 @@ export default async function HomePage({ params, searchParams }: Props) {
   // After the response has gone out: get the competitions one click away ready.
   after(() => warmCompetitions(likelyNext(selection, leagues), NEWS_COUNT));
 
-  const day = dayLabel(date, today, locale, td);
-  const kicker =
-    date === today
-      ? t('kickerToday')
-      : date < today
-        ? t('kickerPast', { day })
-        : t('kickerFuture', { day });
   const newsFilter =
     selection.kind === 'league'
       ? competitionName(selection.league, tc, true)
@@ -141,17 +133,13 @@ export default async function HomePage({ params, searchParams }: Props) {
     >
       <section>
         <div className="flex flex-wrap items-end justify-between gap-4 pt-10 pb-5">
-          <div>
-            <span className="mb-2.5 block kicker">{kicker}</span>
-            <h1 className="display tnum" aria-label={t('heading', { date: dotted(date) })}>
-              {dotted(date)}
-            </h1>
-          </div>
+          <DayHeading date={date} today={today} />
           <DaySwitcher date={date} today={today} league={selectionParam(selection)} />
         </div>
         <div className="rule-2" />
         <Scoreboard
           date={date}
+          today={today}
           slugs={slugs}
           scope={selection.kind}
           initialMatches={matches}

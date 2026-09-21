@@ -25,6 +25,8 @@ const Context = createContext<PendingNav>({ pendingHref: null, navigate: null })
 
 /** If a navigation never lands (offline, server down), stop pretending after this long. */
 const GIVE_UP_MS = 10_000;
+/** On <html> while a navigation is pending; the stylesheet turns it into a "working" cursor. */
+const BUSY_ATTRIBUTE = 'data-navigating';
 
 /**
  * Tells the provider when the address has changed, which is when a navigation has landed.
@@ -66,6 +68,17 @@ export function PendingNavProvider({ children }: { children: ReactNode }) {
     const timer = setTimeout(landed, GIVE_UP_MS);
     return () => clearTimeout(timer);
   }, [pendingHref, landed]);
+
+  // The cursor says "working" for exactly as long as a navigation is on its way: set on the
+  // click, cleared when the page has landed. No timer decides it, so a quick switch shows it
+  // for a blink and a slow one for as long as the wait really is. See `[data-navigating]` in
+  // globals.css.
+  useEffect(() => {
+    if (pendingHref === null) return;
+    const root = document.documentElement;
+    root.setAttribute(BUSY_ATTRIBUTE, '');
+    return () => root.removeAttribute(BUSY_ATTRIBUTE);
+  }, [pendingHref]);
 
   const value = useMemo(() => ({ pendingHref, navigate }), [pendingHref, navigate]);
   return (

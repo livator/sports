@@ -34,7 +34,7 @@ export class CompositeProvider implements SportsDataProvider {
   constructor(
     private readonly providers: readonly SportsDataProvider[],
     /** How long the day's scoreboard waits for a source other than the main one. */
-    private readonly secondaryPatienceMs = 2_500,
+    private readonly secondaryPatienceMs = 1_200,
   ) {
     const [main] = providers;
     if (!main) throw new Error('CompositeProvider needs at least one provider');

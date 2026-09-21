@@ -2,7 +2,8 @@
 
 import type { LeagueSlug, Match, MatchQuery, StandingsOptions } from '@sports/core';
 import { isLive } from '@sports/core';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { sportsKeys } from './keys';
 import { useSportsData } from './provider';
 
@@ -93,6 +94,8 @@ export function useTopScorers(slug: LeagueSlug, limit = 10) {
 export interface UseMatchesByDateOptions {
   /** Server-rendered matches, so the first paint needs no request. */
   initialData?: Match[];
+  /** Keep showing the previous day's matches while another day loads, instead of nothing. */
+  keepPrevious?: boolean;
 }
 
 export function useMatchesByDate(date: string, options: UseMatchesByDateOptions = {}) {
@@ -103,7 +106,28 @@ export function useMatchesByDate(date: string, options: UseMatchesByDateOptions 
     refetchInterval: (q) => matchRefetchInterval(q.state.data),
     staleTime: 20_000,
     ...(options.initialData ? { initialData: options.initialData } : {}),
+    ...(options.keepPrevious ? { placeholderData: keepPreviousData } : {}),
   });
+}
+
+/**
+ * Loads the matches of days the viewer is likely to open next (the neighbours in a day
+ * switcher), so that opening one shows its matches at once. Days already in the cache and
+ * still fresh cost nothing.
+ */
+export function usePrefetchMatchesByDate(dates: readonly string[]) {
+  const provider = useSportsData();
+  const client = useQueryClient();
+  const key = dates.join(',');
+  useEffect(() => {
+    for (const date of key ? key.split(',') : []) {
+      void client.prefetchQuery({
+        queryKey: sportsKeys.matchesByDate(date),
+        queryFn: () => provider.getMatchesByDate(date),
+        staleTime: 60_000,
+      });
+    }
+  }, [client, provider, key]);
 }
 
 const unsupported = (what: string) => () =>
