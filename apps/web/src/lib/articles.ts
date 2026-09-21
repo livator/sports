@@ -6,6 +6,7 @@ import { randomBytes } from 'node:crypto';
 import { dbReady, getDb, schema } from '@/db';
 import { NEWS_SCOPE } from './comments';
 import { env } from './env';
+import { deleteUpload, isUploadPath } from './uploads';
 
 const { article, comment } = schema;
 
@@ -79,14 +80,21 @@ export function parseArticleInput(raw: Record<string, unknown>): ArticleInput {
   }
 
   const imageUrl = field('imageUrl', 'The photo address');
-  if (imageUrl) {
+  // Either a photo uploaded in the console or an https address. Nothing else: the value ends
+  // up in an <img src>, and "javascript:" or "data:" have no business there.
+  if (imageUrl && !isUploadPath(imageUrl)) {
     let ok = false;
     try {
       ok = new URL(imageUrl).protocol === 'https:';
     } catch {
       // Not a URL at all.
     }
-    if (!ok) throw new ArticleInputError('imageUrl', 'The photo address must start with https://');
+    if (!ok) {
+      throw new ArticleInputError(
+        'imageUrl',
+        'Upload a photo, or use an address starting with https://',
+      );
+    }
   }
 
   const when = text(raw.publishAt);
@@ -195,6 +203,7 @@ export async function saveArticle(opts: {
 
   if (existing) {
     await db.update(article).set(values).where(eq(article.id, existing.id));
+    if (existing.imageUrl !== values.imageUrl) await dropUnusedUpload(existing.imageUrl);
     return { ...existing, ...values };
   }
   const row = { id: newId(), ...values, views: 0, createdAt: now };
@@ -202,12 +211,25 @@ export async function saveArticle(opts: {
   return row;
 }
 
-/** Removes the article and its comment thread (votes go with the comments). */
+/** Deletes an uploaded photo once no article shows it any more. Outside addresses are left alone. */
+async function dropUnusedUpload(imageUrl: string | null): Promise<void> {
+  if (!imageUrl || !isUploadPath(imageUrl)) return;
+  const [used] = await getDb()
+    .select({ id: article.id })
+    .from(article)
+    .where(eq(article.imageUrl, imageUrl))
+    .limit(1);
+  if (!used) await deleteUpload(imageUrl);
+}
+
+/** Removes the article, its comment thread (votes go with the comments) and its uploaded photo. */
 export async function deleteArticle(id: string): Promise<void> {
   await dbReady();
   const db = getDb();
+  const existing = await getArticleForAdmin(id);
   await db.delete(comment).where(and(eq(comment.scope, NEWS_SCOPE), eq(comment.threadId, id)));
   await db.delete(article).where(eq(article.id, id));
+  await dropUnusedUpload(existing?.imageUrl ?? null);
 }
 
 /* ---------- Public side ---------- */

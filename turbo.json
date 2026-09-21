@@ -18,7 +18,8 @@
     "EMAIL_DEV_OUTBOX",
     "NEXT_DIST_DIR",
     "ADMIN_EMAIL",
-    "ADMIN_PASSWORD"
+    "ADMIN_PASSWORD",
+    "UPLOADS_DIR"
   ],
   "tasks": {
     "build": {

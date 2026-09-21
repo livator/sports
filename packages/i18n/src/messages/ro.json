@@ -307,7 +307,8 @@
     },
     "placeholderArticle": "Intră în discuție…",
     "upvote": "Votează",
-    "removeUpvote": "Retrage votul"
+    "removeUpvote": "Retrage votul",
+    "loggedInHint": "Ești autentificat ca {name}. Comentariul nu este încă publicat: verifică-l și apasă Publică."
   },
   "email": {
     "verifySubject": "Confirmă-ți emailul pentru Pitchside",

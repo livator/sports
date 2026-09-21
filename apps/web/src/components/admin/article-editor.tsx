@@ -2,7 +2,7 @@
 
 import { LEAGUES } from '@sports/core';
 import Link from 'next/link';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { saveArticleAction } from '@/app/admin/actions';
 import { formatDayTime, toLocalInputValue } from '@/lib/admin-format';
 import type { ArticleField, ArticleState } from '@/lib/articles';
@@ -29,13 +29,16 @@ export interface EditorArticle {
 const LIMITS = { title: 160, summary: 400, body: 20_000, tag: 40, author: 80, caption: 200 };
 const WORDS_PER_MINUTE = 220;
 
-const isHttps = (value: string) => {
+/** A photo uploaded here ("/uploads/…") or an https address, as the server will accept it. */
+const isPhotoAddress = (value: string) => {
+  if (/^\/uploads\/[a-f0-9]{32}\.(jpg|png|webp)$/.test(value)) return true;
   try {
     return new URL(value).protocol === 'https:';
   } catch {
     return false;
   }
 };
+const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 
 export function ArticleEditor({
   article,
@@ -66,6 +69,42 @@ export function ArticleEditor({
   const [note, setNote] = useState<{ text: string; field?: ArticleField } | null>(null);
   const [savedLabel, setSavedLabel] = useState('');
   const [busy, startTransition] = useTransition();
+  const [uploading, setUploading] = useState(false);
+  const filePicker = useRef<HTMLInputElement>(null);
+
+  async function uploadPhoto(file: File | undefined) {
+    if (!file) return;
+    if (file.size > PHOTO_MAX_BYTES) {
+      setNote({ text: 'The photo can be up to 5 MB.', field: 'imageUrl' });
+      return;
+    }
+    setUploading(true);
+    setNote(null);
+    try {
+      const body = new FormData();
+      body.append('photo', file);
+      const res = await fetch('/api/admin/uploads', { method: 'POST', body });
+      const data = (await res.json().catch(() => null)) as {
+        path?: string;
+        message?: string;
+      } | null;
+      if (!res.ok || !data?.path) {
+        setNote({
+          text: data?.message ?? 'The photo was not uploaded. Try again.',
+          field: 'imageUrl',
+        });
+        return;
+      }
+      set('imageUrl', data.path);
+      setNote({ text: 'Photo uploaded. Save the article to keep it.' });
+    } catch {
+      setNote({ text: 'The photo was not uploaded. Check your connection.', field: 'imageUrl' });
+    } finally {
+      setUploading(false);
+      // Let the same file be picked again after a removal.
+      if (filePicker.current) filePicker.current.value = '';
+    }
+  }
 
   // A scheduled article shows its time; one that is already live keeps its original date
   // unless the editor picks a new one.
@@ -130,7 +169,7 @@ export function ArticleEditor({
   const words = fields.body.trim() ? fields.body.trim().split(/\s+/).length : 0;
   const paragraphs = fields.body.split(/\n\s*\n/).filter((p) => p.trim());
   const invalid = (field: ArticleField) => (note?.field === field ? true : undefined);
-  const showPhoto = fields.imageUrl.trim() !== '' && isHttps(fields.imageUrl.trim());
+  const showPhoto = fields.imageUrl.trim() !== '' && isPhotoAddress(fields.imageUrl.trim());
 
   return (
     <section>
@@ -267,17 +306,47 @@ export function ArticleEditor({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="field">
-              <label htmlFor="a-image">Photo address (optional)</label>
+              <label htmlFor="a-image">Photo (optional)</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={uploading}
+                  onClick={() => filePicker.current?.click()}
+                >
+                  {uploading ? 'Uploading…' : fields.imageUrl ? 'Replace photo' : 'Upload photo'}
+                </button>
+                {fields.imageUrl && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => set('imageUrl', '')}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <input
+                ref={filePicker}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                tabIndex={-1}
+                aria-label="Choose a photo to upload"
+                onChange={(e) => void uploadPhoto(e.target.files?.[0])}
+              />
               <input
                 id="a-image"
-                className="input"
-                type="url"
+                className="input mt-2"
                 inputMode="url"
-                placeholder="https://…"
+                placeholder="or paste an https:// address"
                 aria-invalid={invalid('imageUrl')}
                 value={fields.imageUrl}
                 onChange={(e) => set('imageUrl', e.target.value)}
               />
+              <span className="mt-1.5 block text-xs text-ink-3">
+                JPEG, PNG or WebP, up to 5 MB.
+              </span>
             </div>
             <div className="field">
               <label htmlFor="a-when">Publish at (optional)</label>

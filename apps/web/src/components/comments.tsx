@@ -17,10 +17,16 @@ import { useAuthUi, useSessionUser } from './auth-dialog';
 
 type ShownError = Exclude<CommentErrorCode, 'notFound'>;
 
+/** sessionStorage: the thread whose comment box sent the reader to the log in window. */
+const LOGIN_FROM_KEY = 'pitchside.loginFromComments';
+
 /**
  * Comments for a match or an article. Anyone can read. Guests can write too: pressing "Post"
- * (or an upvote) opens the log in / create account dialog, the draft is kept, and after
- * logging in the comment is posted.
+ * (or an upvote) opens the log in / create account dialog and the draft is kept.
+ *
+ * Logging in does not post the draft. It used to, and the text also stayed in the box, so a
+ * second press on "Post" published the same comment twice. Now the text waits in the box and
+ * the reader presses "Post" once, knowingly, under their own name.
  */
 export function Comments({
   thread,
@@ -45,8 +51,29 @@ export function Comments({
 
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<ShownError | null>(null);
-  const draftRef = useRef(draft);
-  draftRef.current = draft;
+  // Set when the reader has just logged in from this box: the hint tells them what is left to do.
+  const [justLoggedIn, setJustLoggedIn] = useState(false);
+  const box = useRef<HTMLTextAreaElement>(null);
+  const askToLogIn = () => {
+    // Logging in reloads the page, so the note that it started here has to outlive this component.
+    try {
+      sessionStorage.setItem(LOGIN_FROM_KEY, key);
+    } catch {
+      // Storage blocked: the reader just does not get the hint.
+    }
+    openAuth({ reason: 'comment' });
+  };
+  useEffect(() => {
+    if (!user) return;
+    try {
+      if (sessionStorage.getItem(LOGIN_FROM_KEY) !== key) return;
+      sessionStorage.removeItem(LOGIN_FROM_KEY);
+    } catch {
+      return;
+    }
+    setJustLoggedIn(true);
+    box.current?.focus();
+  }, [user, key]);
 
   // Keep the draft across the log in dialog and the email verification round trip.
   useEffect(() => {
@@ -92,11 +119,11 @@ export function Comments({
       patch((list) => [comment, ...list]);
       void queryClient.invalidateQueries({ queryKey: ['comments', key] });
       updateDraft('');
+      setJustLoggedIn(false);
     },
     onError: (err) => {
-      if (fail(err) === 'unauthorized') {
-        openAuth({ reason: 'comment', onSignedIn: () => post.mutate(draftRef.current.trim()) });
-      }
+      // The session ran out while they were writing.
+      if (fail(err) === 'unauthorized') askToLogIn();
     },
   });
 
@@ -120,7 +147,7 @@ export function Comments({
     if ([...body].length > COMMENT_MAX_LENGTH) return setError('tooLong');
     if (!user) {
       // The guest has written a message: now ask them to log in or create an account.
-      openAuth({ reason: 'comment', onSignedIn: () => post.mutate(draftRef.current.trim()) });
+      askToLogIn();
       return;
     }
     post.mutate(body);
@@ -138,6 +165,7 @@ export function Comments({
             {t('label')}
           </label>
           <textarea
+            ref={box}
             id="comment-body"
             className="input min-h-[72px] resize-y"
             placeholder={thread.type === 'article' ? t('placeholderArticle') : t('placeholder')}
@@ -147,7 +175,11 @@ export function Comments({
           />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-[13px] text-ink-2">
-              {user ? t('postingAs', { name: user.name }) : t('guestHint')}
+              {!user
+                ? t('guestHint')
+                : justLoggedIn && draft.trim()
+                  ? t('loggedInHint', { name: user.name })
+                  : t('postingAs', { name: user.name })}
               {remaining <= 100 && (
                 <span className={`ml-2 tnum ${remaining < 0 ? 'text-accent-700' : 'text-ink-3'}`}>
                   {t('remaining', { count: remaining })}
@@ -192,7 +224,10 @@ export function Comments({
                     <span className="font-bold">{c.author.name}</span>
                     {mine && <span className="text-accent-700">{t('you')}</span>}
                     <time dateTime={c.createdAt} className="text-ink-3">
-                      {format.relativeTime(new Date(c.createdAt), now)}
+                      {format.relativeTime(
+                        new Date(Math.min(new Date(c.createdAt).getTime(), now.getTime())),
+                        now,
+                      )}
                     </time>
                     {mine && (
                       <button

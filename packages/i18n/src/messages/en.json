@@ -307,7 +307,8 @@
     },
     "placeholderArticle": "Join the discussion…",
     "upvote": "Upvote",
-    "removeUpvote": "Remove upvote"
+    "removeUpvote": "Remove upvote",
+    "loggedInHint": "Logged in as {name}. Your comment is not posted yet: check it and press Post comment."
   },
   "email": {
     "verifySubject": "Confirm your email for Pitchside",

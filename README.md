@@ -175,6 +175,13 @@ to the full story, and a comment thread of our own.
   "Feature on home" pins one to the top. Ours have a body (`NewsArticle.body`) because the
   text is ours; publisher stories still only link out. The body is plain text, rendered as
   text, never as HTML.
+- **Photos.** The editor uploads a JPEG, PNG or WebP of up to 5 MB (`POST /api/admin/uploads`,
+  admins only, same origin only). The server decides what a file is from its first bytes, never
+  from its name or declared type, so an SVG or a web page renamed to `.jpg` is refused. Files get
+  a random name, live in `UPLOADS_DIR` (default `apps/web/data/uploads`) and are served from
+  `/uploads/:name` with `nosniff`. Deleting an article, or replacing its photo, deletes the file.
+  A photo uploaded to an article that is then never saved stays on disk. `NewsArticle.imageUrl`
+  is then a path, not a full address: API clients resolve it against the API base.
 - **Scheduling** needs no background job: an article published with a future "Publish at"
   is simply not served until then. Drafts and scheduled articles answer 404 to readers.
 - **Views** are counted once per browser session by a small beacon, so refreshes and link
