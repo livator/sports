@@ -26,7 +26,7 @@ export function HomeAside({
     : t('tableTitle', { league: competitionName(league, tc, true) });
 
   return (
-    <aside className="max-w-[420px] min-w-0 flex-[1_1_300px]">
+    <aside className="min-w-0">
       <div className="flex items-baseline justify-between gap-3 pb-2.5">
         <h2 className="eyebrow">{title}</h2>
         <Link

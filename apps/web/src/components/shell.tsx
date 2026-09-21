@@ -5,8 +5,18 @@ import type { ReactNode } from 'react';
  * main column (up to 1240px). The sidebar is hidden below 900px, as in the design.
  * The main column is left-aligned in the frame on every page, so content lines up with the
  * brand in the navigation whether or not there is a sidebar.
+ *
+ * `wide` lets the main column use the whole frame, for pages with a second column of their own.
  */
-export function Shell({ aside, children }: { aside?: ReactNode; children: ReactNode }) {
+export function Shell({
+  aside,
+  wide = false,
+  children,
+}: {
+  aside?: ReactNode;
+  wide?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div className="mx-auto flex w-full max-w-[1520px] flex-1 px-[clamp(16px,4vw,48px)]">
       {aside && (
@@ -14,7 +24,9 @@ export function Shell({ aside, children }: { aside?: ReactNode; children: ReactN
           {aside}
         </aside>
       )}
-      <main className="w-full max-w-[1240px] min-w-0 flex-1 pb-16">{children}</main>
+      <main className={`w-full min-w-0 flex-1 pb-16 ${wide ? '' : 'max-w-[1240px]'}`}>
+        {children}
+      </main>
     </div>
   );
 }

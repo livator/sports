@@ -1,12 +1,15 @@
 import type { CompetitionCategory, League } from '@sports/core';
 import { useTranslations } from 'next-intl';
 import { categoriesOf, competitionName } from '@/lib/competitions';
-import { Chips, type Chip } from './chips';
+import { TwoLevelChips, type Chip } from './chips';
 
 /**
  * Two-level competition picker. The first row is categories (UEFA, National teams, Top 5,
  * More leagues); the second row lists the competitions of the active category. Twenty-odd
  * competitions would not fit one row on a phone, and this keeps each row short.
+ *
+ * Every category's second row is sent to the browser, so picking a category shows its
+ * competitions at once instead of after the server has rendered the new page.
  */
 export function CompetitionNav({
   leagues,
@@ -31,38 +34,28 @@ export function CompetitionNav({
   leadingInCategory?: Chip;
 }) {
   const t = useTranslations('competitions');
-  const categories = categoriesOf(leagues, keep);
-  const inCategory = activeCategory
-    ? leagues.filter((l) => l.category === activeCategory && keep(l))
-    : [];
+  const groups = categoriesOf(leagues, keep).map((category) => ({
+    chip: {
+      href: categoryHref(category),
+      label: t(`categories.${category}`),
+      active: category === activeCategory,
+    },
+    childrenLabel: t(`categories.${category}`),
+    children: leagues
+      .filter((l) => l.category === category && keep(l))
+      .map((l) => ({
+        href: leagueHref(l),
+        label: competitionName(l, t, true),
+        active: l.slug === activeLeague?.slug,
+      })),
+  }));
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-1">
-      <Chips
-        label={t('categoryNav')}
-        items={[
-          ...(leading ? [leading] : []),
-          ...categories.map((c) => ({
-            href: categoryHref(c),
-            label: t(`categories.${c}`),
-            active: c === activeCategory,
-          })),
-        ]}
-      />
-      {inCategory.length > 1 && (
-        <Chips
-          label={t(`categories.${activeCategory!}`)}
-          muted
-          items={[
-            ...(leadingInCategory ? [leadingInCategory] : []),
-            ...inCategory.map((l) => ({
-              href: leagueHref(l),
-              label: competitionName(l, t, true),
-              active: l.slug === activeLeague?.slug,
-            })),
-          ]}
-        />
-      )}
-    </div>
+    <TwoLevelChips
+      label={t('categoryNav')}
+      groups={groups}
+      {...(leading ? { leading } : {})}
+      {...(leadingInCategory ? { leadingChild: leadingInCategory } : {})}
+    />
   );
 }

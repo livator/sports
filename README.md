@@ -119,6 +119,31 @@ Nothing else is needed locally:
 
 See `.env.example` for every setting.
 
+## Switching competitions
+
+Picking a competition should feel instant, and it is built in four layers:
+
+- **The click is answered in the browser.** The scoreboard already holds every match of the
+  day, so the picker and the match list follow the click at once (`PendingNavProvider`,
+  `TwoLevelChips`, `useHeadingFilter`). Only the table, scorers and news wait for the server,
+  dimmed meanwhile.
+- **No waterfall.** The home page asks for matches, news, table and scorers at the same time.
+  A competition nobody has opened yet used to cost two trips to the data source in a row.
+- **Warm-up after the response.** `after()` runs `warmCompetitions` for the competitions one
+  click away, a few at a time and at most once per ten minutes each, so the next click finds
+  its data cached. The provider also shares one in-flight request per URL.
+- **No link prefetching** (`@/i18n/navigation`). Pages are rendered per request, so a prefetch
+  brings back nothing reusable, and dozens of them per view queue ahead of the real click.
+
+Two things that were tried and removed, so nobody repeats them: streaming the table and news
+behind `<Suspense>` made some navigations never land in production builds (the response
+arrived, the page did not update), and keyed boundaries hold their placeholder for at least
+300ms, which slows every warm switch. The page now arrives in one response.
+
+Measured in a production build, clicking through all 27 filters: picker 10 to 110ms, whole
+page 45 to 190ms, from an empty cache. `next dev` adds about 300ms to every request, so
+expect roughly 0.4s there.
+
 ## News
 
 The scoreboard's left sidebar lists the latest headlines and follows the competition picker.
@@ -306,10 +331,11 @@ Deliberate differences from the prototype:
   stored, with upvotes. Match ratings are not built.
 - **Match groups show a match count**, because the data source has no matchday numbers.
 - **Articles link out** to the publisher for the full text instead of showing a body.
-- **The results ticker** in the navigation shows live and finished matches from today and
-  yesterday, from 1200px up. How many fit is measured from the strip, not from the window,
-  because the rest of the navigation changes width with the language. The order is
-  `latestResults` in `@sports/core`, so the mobile app can show the same strip.
+- **The results ticker** in the navigation shows final scores only, from the past week, and
+  by default only from the top five leagues; live games stay on the scoreboard. It appears
+  from 1200px up. How many fit is measured from the strip, not from the window, because the
+  rest of the navigation changes width with the language. The rules are `latestResults` in
+  `@sports/core` (`categories` widens it), so the mobile app can show the same strip.
 - **Line-ups are the confirmed teams only.** The design sketches "probable line-ups" before
   kick-off; the data source has none, so the tab says when they will appear instead of guessing.
   Rows follow the published formation, and fall back to positions when it does not add up.

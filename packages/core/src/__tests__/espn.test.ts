@@ -287,6 +287,42 @@ describe('EspnProvider', () => {
     });
     expect(requested).toEqual(['20260920']);
   });
+
+  it('shares one request between callers that ask for the same URL at the same time', async () => {
+    let calls = 0;
+    const fakeFetch = (async () => {
+      calls++;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      return new Response(JSON.stringify({ events: [event()] }));
+    }) as typeof fetch;
+    const provider = new EspnProvider({ fetch: fakeFetch });
+    const day = { dateFrom: '2026-09-20', dateTo: '2026-09-20' };
+
+    const [a, b] = await Promise.all([
+      provider.getMatches('serie-a', day),
+      provider.getMatches('serie-a', day),
+    ]);
+    expect(calls).toBe(1);
+    expect(a).toEqual(b);
+
+    // Once it has landed, the next caller asks again: this is not a cache.
+    await provider.getMatches('serie-a', day);
+    expect(calls).toBe(2);
+  });
+
+  it('does not let a failed request stick', async () => {
+    let calls = 0;
+    const fakeFetch = (async () => {
+      calls++;
+      if (calls === 1) return new Response('nope', { status: 503 });
+      return new Response(JSON.stringify({ events: [] }));
+    }) as typeof fetch;
+    const provider = new EspnProvider({ fetch: fakeFetch });
+    const day = { dateFrom: '2026-09-20', dateTo: '2026-09-20' };
+
+    await expect(provider.getMatches('serie-a', day)).rejects.toThrow();
+    await expect(provider.getMatches('serie-a', day)).resolves.toEqual([]);
+  });
 });
 
 describe('helpers', () => {

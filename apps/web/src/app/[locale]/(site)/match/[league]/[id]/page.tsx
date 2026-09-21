@@ -16,6 +16,7 @@ import { Comments } from '@/components/comments';
 import { Crest } from '@/components/crest';
 import { DataNotice } from '@/components/data-notice';
 import { FormPips } from '@/components/form-pips';
+import { GoalIcon } from '@/components/goal-icon';
 import { Lineups } from '@/components/lineups';
 import { LiveRefresh } from '@/components/live-refresh';
 import { LocalTime } from '@/components/local-time';
@@ -51,15 +52,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 const isGoal = (e: TimelineEvent) =>
   e.kind === 'goal' || e.kind === 'penalty-goal' || e.kind === 'own-goal';
-
-/** The design system's accent square, standing in for a goal icon. */
-function GoalMark({ className, label }: { className: string; label: string }) {
-  return (
-    <span className={`inline-block size-2 bg-accent align-middle ${className}`}>
-      <span className="sr-only">{label}</span>
-    </span>
-  );
-}
 
 /** Before kick-off the Stats tab compares the two seasons so far, from the league table. */
 const LOWER_IS_BETTER = new Set(['goalsAgainst']);
@@ -336,7 +328,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
                       {e.side === 'home' && (
                         <>
                           {eventText(e)}
-                          {isGoal(e) && <GoalMark className="ml-2" label={t('goal')} />}
+                          {isGoal(e) && <GoalIcon className="ml-2" label={t('goal')} />}
                         </>
                       )}
                     </span>
@@ -348,7 +340,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
                     <span className={weight}>
                       {e.side === 'away' && (
                         <>
-                          {isGoal(e) && <GoalMark className="mr-2" label={t('goal')} />}
+                          {isGoal(e) && <GoalIcon className="mr-2" label={t('goal')} />}
                           {eventText(e)}
                         </>
                       )}

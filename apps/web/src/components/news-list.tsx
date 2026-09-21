@@ -1,6 +1,6 @@
 import { LEAGUES, type NewsArticle } from '@sports/core';
 import { useFormatter, useNow, useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
+import { NewsLink } from './news-link';
 import { competitionName } from '@/lib/competitions';
 
 /** Competition name when we know it, the publisher's own label otherwise. */
@@ -19,12 +19,18 @@ export function NewsList({
   articles,
   filterLabel,
   heading,
+  activeId,
+  thumbnails = false,
 }: {
   articles: NewsArticle[] | null;
   /** What the list is filtered to, shown on the right of the heading. */
   filterLabel?: string;
   /** Defaults to "Latest news". */
   heading?: string;
+  /** The article being read, when the list sits beside one: it is marked, not hidden. */
+  activeId?: string;
+  /** Show each story's photo beside its headline. For columns with the width to spare. */
+  thumbnails?: boolean;
 }) {
   const t = useTranslations('news');
   const format = useFormatter();
@@ -44,10 +50,11 @@ export function NewsList({
         <p className="py-4 text-sm text-ink-2">{t('none')}</p>
       ) : (
         articles.map((article) => (
-          <Link
+          <NewsLink
             key={article.id}
-            href={`/news/${article.id}`}
-            className="block border-b px-1 py-3 hover:bg-hover"
+            articleId={article.id}
+            active={article.id === activeId}
+            {...(thumbnails ? { thumbnailUrl: article.imageUrl ?? null } : {})}
           >
             <span className="mb-1.5 flex flex-wrap gap-x-2.5 text-[11px] tracking-[0.08em] uppercase">
               <span className="font-semibold text-accent-700">{tagOf(article)}</span>
@@ -55,10 +62,12 @@ export function NewsList({
                 {format.relativeTime(new Date(article.publishedAt), now)}
               </time>
             </span>
-            <span className="line-clamp-2 text-sm leading-[1.35] font-semibold">
+            <span
+              className={`leading-[1.35] font-semibold ${thumbnails ? 'line-clamp-3 text-[15px]' : 'line-clamp-2 text-sm'}`}
+            >
               {article.title}
             </span>
-          </Link>
+          </NewsLink>
         ))
       )}
     </section>

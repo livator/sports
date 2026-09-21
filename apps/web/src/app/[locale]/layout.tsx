@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { AuthUiProvider } from '@/components/auth-dialog';
 import { FavouritesProvider } from '@/components/favourites';
+import { PendingNavProvider } from '@/components/pending-nav';
 import { Providers } from '@/components/providers';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteNav } from '@/components/site-nav';
@@ -55,15 +56,17 @@ export default async function LocaleLayout({ children, params }: Props) {
           <Providers>
             <FavouritesProvider>
               <AuthUiProvider>
-                <TimeZoneSync />
-                <div className="flex min-h-dvh flex-col">
-                  <SiteNav />
-                  <Suspense fallback={null}>
-                    <VerifiedNotice />
-                  </Suspense>
-                  {children}
-                  <SiteFooter source={getProvider().name} />
-                </div>
+                <PendingNavProvider>
+                  <TimeZoneSync />
+                  <div className="flex min-h-dvh flex-col">
+                    <SiteNav />
+                    <Suspense fallback={null}>
+                      <VerifiedNotice />
+                    </Suspense>
+                    {children}
+                    <SiteFooter source={getProvider().name} />
+                  </div>
+                </PendingNavProvider>
               </AuthUiProvider>
             </FavouritesProvider>
           </Providers>

@@ -2,7 +2,7 @@
 
 import type { LeagueSlug, Match, MatchQuery, StandingsOptions } from '@sports/core';
 import { isLive } from '@sports/core';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { sportsKeys } from './keys';
 import { useSportsData } from './provider';
 
@@ -56,6 +56,29 @@ export function useMatches(slug: LeagueSlug, query: MatchQuery = {}) {
     queryKey: sportsKeys.matches(slug, query),
     queryFn: () => provider.getMatches(slug, query),
     refetchInterval: (q) => matchRefetchInterval(q.state.data),
+  });
+}
+
+const RESULTS_REFETCH_MS = 2 * 60_000;
+
+/**
+ * Matches of several competitions over one date range, as a single list. One request per
+ * competition, each cached under the same key `useMatches` uses. Meant for results strips:
+ * it refreshes every couple of minutes, not at live-score pace.
+ */
+export function useMatchesAcross(slugs: readonly LeagueSlug[], query: MatchQuery) {
+  const provider = useSportsData();
+  return useQueries({
+    queries: slugs.map((slug) => ({
+      queryKey: sportsKeys.matches(slug, query),
+      queryFn: () => provider.getMatches(slug, query),
+      staleTime: RESULTS_REFETCH_MS,
+      refetchInterval: RESULTS_REFETCH_MS,
+    })),
+    combine: (results) => ({
+      data: results.flatMap((r) => r.data ?? []),
+      isPending: results.some((r) => r.isPending),
+    }),
   });
 }
 

@@ -1,10 +1,12 @@
 import { DEFAULT_LEAGUE, isIsoDate, type League, type Match } from '@sports/core';
 import type { Locale } from '@sports/i18n';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { after } from 'next/server';
 import { CompetitionNav } from '@/components/competition-nav';
 import { DaySwitcher, dayLabel } from '@/components/day-switcher';
 import { HomeAside } from '@/components/home-aside';
 import { NewsList } from '@/components/news-list';
+import { PendingRegion } from '@/components/pending-nav';
 import { Scoreboard } from '@/components/scoreboard';
 import { Shell } from '@/components/shell';
 import { YourClubs } from '@/components/your-clubs';
@@ -19,6 +21,7 @@ import {
 import { getNewsFeed } from '@/lib/news';
 import { getProvider, safe } from '@/lib/provider';
 import { viewerToday } from '@/lib/today';
+import { warmCompetitions } from '@/lib/warm';
 import { dotted, homeHref } from '@/lib/view';
 
 type Props = {
@@ -27,6 +30,20 @@ type Props = {
 };
 
 const NEWS_COUNT = 7;
+
+/** The competitions a visitor is most likely to pick next from where they are now. */
+function likelyNext(selection: Selection, leagues: readonly League[]): League[] {
+  if (selection.kind === 'all') {
+    // Anything is one or two clicks away. Start with what each category opens on, because a
+    // category is the likeliest first click; the rest follows a few at a time.
+    const firsts = new Map<string, League>();
+    for (const l of leagues) if (l.hasTable && !firsts.has(l.category)) firsts.set(l.category, l);
+    const lead = [...firsts.values()];
+    return [...lead, ...leagues.filter((l) => !lead.includes(l))];
+  }
+  const category = selection.kind === 'category' ? selection.category : selection.league.category;
+  return leagues.filter((l) => l.category === category);
+}
 
 /**
  * Which competition the right-hand table shows. A single pick wins. For a category or "all"
@@ -67,17 +84,31 @@ export default async function HomePage({ params, searchParams }: Props) {
   const selection = parseSelection(query.league, leagues);
   const slugs = selectionSlugs(selection, leagues);
 
-  // The news follows the competition filter, like the rest of the page.
-  const [matches, news] = await Promise.all([
-    safe(provider.getMatchesByDate(date)),
+  /*
+   * Everything the page shows is asked for at once. The table used to wait for the matches
+   * and the news, so a competition nobody had opened yet cost two trips to the data source
+   * in a row; now it costs the slowest one. For a single competition the table is known
+   * from the URL. For a category or "all" it depends on who plays that day, and the matches
+   * are the same request whatever the filter, so they are nearly always cached already.
+   */
+  const matchesReady = safe(provider.getMatchesByDate(date));
+  const sideReady = (async () => {
+    const played = selection.kind === 'league' ? null : await matchesReady;
+    const shown = slugs ? (played ?? []).filter((m) => slugs.includes(m.leagueSlug)) : played;
+    const side = sidebarLeague(selection, leagues, shown);
+    const [standings, scorers] = await Promise.all([
+      safe(provider.getStandings(side.slug, { includeForm: false })),
+      side.hasScorers ? safe(provider.getTopScorers(side.slug, 5)) : Promise.resolve([]),
+    ]);
+    return { side, standings, scorers };
+  })();
+  const [matches, news, { side, standings, scorers }] = await Promise.all([
+    matchesReady,
     getNewsFeed(slugs ?? [], NEWS_COUNT),
+    sideReady,
   ]);
-  const shown = slugs ? (matches ?? []).filter((m) => slugs.includes(m.leagueSlug)) : matches;
-  const side = sidebarLeague(selection, leagues, shown);
-  const [standings, scorers] = await Promise.all([
-    safe(provider.getStandings(side.slug, { includeForm: false })),
-    side.hasScorers ? safe(provider.getTopScorers(side.slug, 5)) : Promise.resolve([]),
-  ]);
+  // After the response has gone out: get the competitions one click away ready.
+  after(() => warmCompetitions(likelyNext(selection, leagues), NEWS_COUNT));
 
   const day = dayLabel(date, today, locale, td);
   const kicker =
@@ -92,7 +123,12 @@ export default async function HomePage({ params, searchParams }: Props) {
       : selection.kind === 'category'
         ? tc(`categories.${selection.category}`)
         : tn('filterAll');
-  const newsList = <NewsList articles={news} filterLabel={newsFilter} />;
+  // Dimmed while a filter change is on its way; the picker and the match list do not wait.
+  const newsList = (
+    <PendingRegion>
+      <NewsList articles={news} filterLabel={newsFilter} />
+    </PendingRegion>
+  );
 
   return (
     <Shell

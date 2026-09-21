@@ -137,13 +137,30 @@ export class EspnProvider implements SportsDataProvider {
     this.now = options.now ?? (() => new Date());
   }
 
-  private async request<T>(
+  private readonly inFlight = new Map<string, Promise<unknown>>();
+
+  /**
+   * One request per URL at a time: callers that ask for a URL already on its way share that
+   * answer. A page and a background job often want the same table at the same moment, and
+   * the mappers only read what they are given, so sharing the parsed body is safe.
+   */
+  private request<T>(
     path: string,
     params: Record<string, string | number | boolean> = {},
     base = this.baseUrl,
   ): Promise<T> {
     const url = new URL(`${base}${path}`);
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
+    const key = url.toString();
+    const pending = this.inFlight.get(key);
+    if (pending) return pending as Promise<T>;
+
+    const started = this.send<T>(url, path).finally(() => this.inFlight.delete(key));
+    this.inFlight.set(key, started);
+    return started;
+  }
+
+  private async send<T>(url: URL, path: string): Promise<T> {
     let res: Response;
     try {
       res = await this.fetchFn(url, this.requestInit(url));

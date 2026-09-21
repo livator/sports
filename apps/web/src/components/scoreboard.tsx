@@ -3,13 +3,15 @@
 import { LEAGUES, isLive, type LeagueSlug, type Match } from '@sports/core';
 import { useMatchesByDate } from '@sports/query';
 import { useTranslations } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { Link } from '@/i18n/navigation';
-import { competitionName } from '@/lib/competitions';
+import { competitionName, parseSelection, selectionSlugs } from '@/lib/competitions';
 import { matchHref, sideWeight, statusLabel, statusTone, toneClass } from '@/lib/view';
 import { useFavourites } from './favourites';
 import { LocalTime } from './local-time';
 import { MatchRow } from './match-row';
+import { PendingRegion, usePendingNav } from './pending-nav';
 
 const stripEdge = {
   live: 'border-t-accent',
@@ -17,6 +19,25 @@ const stripEdge = {
   upcoming: 'border-t-neutral-400',
 };
 const stripOrder = { live: 0, done: 1, upcoming: 2 };
+
+type Scope = 'all' | 'category' | 'league';
+
+/**
+ * The filter a clicked competition chip is heading for, when it only changes the competition
+ * and not the day. Every match of the day is already in the browser, so the list can follow
+ * the click at once and leave only the table and the news to the server.
+ */
+function useHeadingFilter(): { slugs: LeagueSlug[] | null; scope: Scope } | null {
+  const { pendingHref } = usePendingNav();
+  const current = useSearchParams();
+  if (pendingHref === null) return null;
+  const target = new URL(pendingHref, 'http://local');
+  if (target.pathname !== '/' || target.searchParams.get('date') !== current.get('date')) {
+    return null;
+  }
+  const selection = parseSelection(target.searchParams.get('league') ?? undefined, LEAGUES);
+  return { slugs: selectionSlugs(selection, LEAGUES), scope: selection.kind };
+}
 
 /** Compact card for the horizontal strip: live first, then results, then fixtures. */
 function StripCard({ match }: { match: Match }) {
@@ -111,7 +132,7 @@ export function Scoreboard({
   /** Competitions to show, or null for all of them. */
   slugs: LeagueSlug[] | null;
   /** How wide the filter is, which picks the right "nothing on today" message. */
-  scope: 'all' | 'category' | 'league';
+  scope: Scope;
   initialMatches: Match[] | null;
   picker: ReactNode;
   aside: ReactNode;
@@ -124,8 +145,11 @@ export function Scoreboard({
     initialMatches ? { initialData: initialMatches } : {},
   );
 
+  // What the server rendered, unless a chip was just clicked: then what it is heading for.
+  const view = useHeadingFilter() ?? { slugs, scope };
+
   const all = data ?? [];
-  const wanted = slugs ? new Set<string>(slugs) : null;
+  const wanted = view.slugs ? new Set<string>(view.slugs) : null;
   const filtered = wanted ? all.filter((m) => wanted.has(m.leagueSlug)) : all;
   const liveCount = filtered.filter((m) => isLive(m.status)).length;
   const favIds = new Set(favs.map((f) => f.id));
@@ -137,9 +161,9 @@ export function Scoreboard({
       stripOrder[statusTone(a)] - stripOrder[statusTone(b)] || a.kickoff.localeCompare(b.kickoff),
   );
   const empty =
-    scope === 'all'
+    view.scope === 'all'
       ? t('noMatchesAll')
-      : scope === 'category'
+      : view.scope === 'category'
         ? t('noMatchesGroup')
         : t('noMatchesLeague');
 
@@ -191,7 +215,7 @@ export function Scoreboard({
             </>
           )}
         </div>
-        {aside}
+        <PendingRegion className="max-w-[420px] min-w-0 flex-[1_1_300px]">{aside}</PendingRegion>
       </div>
     </>
   );
