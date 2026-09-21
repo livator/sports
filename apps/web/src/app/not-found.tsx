@@ -9,7 +9,7 @@ export default function GlobalNotFound() {
         style={{
           fontFamily: 'system-ui, sans-serif',
           padding: 32,
-          background: '#f3f2f2',
+          background: '#fbfaf8',
           color: '#201e1d',
         }}
       >

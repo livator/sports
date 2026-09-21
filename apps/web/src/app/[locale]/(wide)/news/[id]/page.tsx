@@ -112,7 +112,7 @@ export default async function ArticlePage({ params }: Props) {
                 src={article.imageUrl}
                 alt=""
                 loading="lazy"
-                className="aspect-video w-full bg-neutral-300 object-cover contrast-[1.08] grayscale"
+                className="aspect-video w-full bg-neutral-300 object-cover"
               />
               {article.imageCredit && (
                 <figcaption className="mt-1 text-[11px] text-ink-3">

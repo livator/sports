@@ -8,14 +8,19 @@
 @theme {
   --font-sans: var(--font-archivo), var(--font-cyrillic), system-ui, sans-serif;
 
-  --color-ground: #f3f2f2;
-  --color-surface: #eae9e9;
-  --color-ink: #201e1d;
+  /*
+   * A light, slightly warm page with soft rules. The first version followed the design file's
+   * grey ground, near-black ink and heavy dividers, which together with black-and-white photos
+   * read as dark and dramatic. The structure is the same; only the weight of the colours changed.
+   */
+  --color-ground: #fbfaf8;
+  --color-surface: #f2f0ec;
+  --color-ink: #2b2927;
   /* Ink at 70% and 60%: secondary and tertiary text. */
-  --color-ink-2: color-mix(in srgb, #201e1d 70%, transparent);
-  --color-ink-3: color-mix(in srgb, #201e1d 60%, transparent);
-  --color-divider: color-mix(in srgb, #201e1d 40%, transparent);
-  --color-hover: color-mix(in srgb, #201e1d 5%, transparent);
+  --color-ink-2: color-mix(in srgb, #2b2927 70%, transparent);
+  --color-ink-3: color-mix(in srgb, #2b2927 58%, transparent);
+  --color-divider: color-mix(in srgb, #2b2927 22%, transparent);
+  --color-hover: color-mix(in srgb, #2b2927 4%, transparent);
 
   --color-accent: #ec3013;
   --color-accent-600: #dd2b0f;

@@ -413,7 +413,7 @@ export function ArticleEditor({
                 <img
                   src={fields.imageUrl.trim()}
                   alt=""
-                  className="aspect-video w-full bg-neutral-300 object-cover contrast-[1.08] grayscale"
+                  className="aspect-video w-full bg-neutral-300 object-cover"
                 />
                 {fields.caption && (
                   <figcaption className="mt-1 text-[11px] text-ink-3">{fields.caption}</figcaption>
@@ -421,7 +421,7 @@ export function ArticleEditor({
               </figure>
             ) : (
               <div className="my-4 grid aspect-video place-items-center bg-neutral-300 p-3 text-center text-[11px] tracking-[0.08em] text-neutral-700 uppercase">
-                {fields.caption || 'Photo · B&W'}
+                {fields.caption || 'Photo'}
               </div>
             )}
             {paragraphs.map((p, i) => (

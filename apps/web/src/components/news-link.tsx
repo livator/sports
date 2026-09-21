@@ -45,7 +45,7 @@ export function NewsLink({
             src={thumbnailUrl}
             alt=""
             loading="lazy"
-            className="aspect-[3/2] w-full bg-neutral-300 object-cover contrast-[1.08] grayscale"
+            className="aspect-[3/2] w-full bg-neutral-300 object-cover"
           />
         ) : (
           <span aria-hidden className="block aspect-[3/2] w-full bg-neutral-300" />

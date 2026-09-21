@@ -96,7 +96,7 @@ export default async function PlayerPage({ params }: Props) {
             alt=""
             width={120}
             height={150}
-            className="h-[150px] w-[120px] flex-none bg-neutral-300 object-cover object-top contrast-[1.08] grayscale"
+            className="h-[150px] w-[120px] flex-none bg-neutral-300 object-cover object-top"
           />
         ) : (
           <div

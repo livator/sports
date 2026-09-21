@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: Pick<Props, 'params'>): Promi
 }
 
 export const viewport: Viewport = {
-  themeColor: '#f3f2f2',
+  themeColor: '#fbfaf8',
   width: 'device-width',
   initialScale: 1,
 };
