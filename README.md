@@ -1,8 +1,8 @@
 # Pitchside
 
-Live scores, results, tables and players for Europe's top 5 football leagues
-(Premier League, LaLiga, Serie A, Bundesliga, Ligue 1), with real data and real club crests.
-Available in English, Russian and Romanian, with accounts and match comments.
+Live scores, results, tables and players for European football: the top 5 leagues, eleven more
+domestic leagues, the three UEFA club competitions and national-team games, with real data and
+real crests. Available in English, Russian and Romanian, with accounts and match comments.
 
 Built as a monorepo so the domain logic, data layer and translations are shared between the
 web app today and native mobile apps later.
@@ -24,15 +24,16 @@ sports/
 
 ### Screens
 
-| Route                      | Screen                                                                |
-| -------------------------- | --------------------------------------------------------------------- |
-| `/`                        | Matches for a day: strip, league filter, grouped rows, table, scorers |
-| `/match/:league/:id`       | Match: score, timeline, head to head, team stats, comments            |
-| `/tables/:league`          | Full league table with form and qualification zones                   |
-| `/tables/:league/fixtures` | A league's fixtures and results by month                              |
-| `/team/:league/:id`        | Team: season numbers, form, fixtures and results, squad               |
-| `/players`                 | Top scorers, across all leagues or one                                |
-| `/player/:league/:id`      | Player: season numbers, goals by match, profile                       |
+| Route                      | Screen                                                                     |
+| -------------------------- | -------------------------------------------------------------------------- |
+| `/`                        | Matches for a day: strip, competition picker, grouped rows, table, scorers |
+| `/match/:league/:id`       | Match: score, timeline, head to head, team stats, comments                 |
+| `/tables/:league`          | Full league table with form and qualification zones                        |
+| `/tables/:league/fixtures` | A league's fixtures and results by month                                   |
+| `/team/:league/:id`        | Team: season numbers, form, fixtures and results, squad                    |
+| `/players`                 | Top scorers, across all leagues or one                                     |
+| `/player/:league/:id`      | Player: season numbers, goals by match, profile                            |
+| `/news/:id`                | Article: headline, summary, photo, link to the publisher, comments         |
 
 English is unprefixed. Russian lives under `/ru`, Romanian under `/ro` (for example
 `/ro/tables/la-liga`). `/?date=YYYY-MM-DD&league=serie-a` selects the day and the filter.
@@ -67,6 +68,35 @@ when the configured source cannot serve them.
 | `MockProvider`         | Simulated, deterministic season. For offline work and tests only.   | No      | No  |
 | `HttpProvider`         | Whatever the web app serves at `/api/v1`. This is what mobile uses. | Yes     | No  |
 
+## Competitions
+
+Twenty-two competitions, in four categories. The order below is the display order everywhere,
+so a Champions League night leads the scoreboard with no special casing.
+
+| Category   | Competitions                                                                                                                                                                                 |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `uefa`     | Champions League, Europa League, Conference League                                                                                                                                           |
+| `national` | Nations League, Euro Qualifying, International Friendlies                                                                                                                                    |
+| `top5`     | Premier League, LaLiga, Serie A, Bundesliga, Ligue 1                                                                                                                                         |
+| `more`     | Eredivisie, Primeira Liga, Belgian Pro League, Süper Lig, Scottish Premiership, Super League Greece, Austrian Bundesliga, Danish Superliga, Allsvenskan, Eliteserien, Russian Premier League |
+
+- Everything is configured in `packages/core/src/leagues.ts`. To add a competition: add its slug
+  to `LeagueSlug`, an entry to `LEAGUES`, and its code to `ESPN_CODES` in the ESPN provider.
+  The compiler flags whatever is missing. UEFA and national-team names are translated in
+  `@sports/i18n` (`competitions.names`); domestic league names are proper nouns and are not.
+- Pickers are two-level (category, then competition) so they fit a phone. `?league=` accepts a
+  category key (`uefa`) or a competition slug (`champions-league`).
+- **Zones come from the data.** ESPN says what each table position means, and
+  `zoneFromNote` turns that into a `ZoneKind`, so nobody maintains European places per league.
+  `League.zones` is only a fallback for sources that do not say.
+- **Grouped tables.** `Standings.groups` is present when a competition has several tables
+  (Nations League has 14). `Standings.rows` always holds every row for lookups.
+- `hasTable` and `hasScorers` switch screens off where there is nothing to show: friendlies
+  have no table, and national-team competitions publish no scorer list.
+- Providers report what they cover through `getLeagues()`. ESPN covers all 22, football-data.org
+  the ones with an `externalCode`, the demo provider the top five.
+- Romania's Liga 1 and the Swiss Super League are not included: ESPN has no current season for them.
+
 ## Getting started
 
 Requirements: Node 22+ (see `.nvmrc`), npm 11.
@@ -87,6 +117,19 @@ Nothing else is needed locally:
   on a new machine with the command in `.env.example`.
 
 See `.env.example` for every setting.
+
+## News
+
+The scoreboard's left sidebar lists the latest headlines and follows the competition picker.
+Each headline opens an article page with the publisher's headline, summary and photo, a link
+to the full story, and a comment thread of our own.
+
+- **The article body is never copied.** `NewsArticle` has no body field on purpose: the text
+  belongs to the publisher, so the page links out instead of republishing it.
+- Headlines come from the data source (`getNews`, `getArticle`, both optional). ESPN serves one
+  feed per competition; merged lists are capped at six feeds, de-duplicated and sorted by time.
+  Video clips are dropped. Headlines stay in the publisher's language, whatever the UI language.
+- Below 900px the design hides the sidebar, so the news moves under the matches instead.
 
 ## Languages
 
@@ -121,6 +164,8 @@ and libSQL.
   "Post" opens the dialog with "Log in" and "Create account". The draft is kept in the browser,
   is posted automatically after logging in, and is still in the box after the email
   verification round trip.
+- Comments live in threads: a match or a news article (`CommentThread`). Anyone signed in can
+  upvote a comment once, and take it back. Nobody upvotes their own.
 - Authors can delete their own comments. There is no moderation tooling yet.
 - Limits: 1000 characters per comment, 5 comments per minute per account, and better-auth's
   rate limits on sign-in, sign-up and resending the link. State-changing requests from another
@@ -161,6 +206,14 @@ CI (`.github/workflows/ci.yml`) runs format check, lint, typecheck, tests and bu
 and pull request. Tests never touch the network, and the build needs no secret and no database:
 both are opened on first use, not at import.
 
+To run a production build while `npm run dev` is running, give it its own output folder and
+database so the two do not overwrite each other:
+
+```bash
+cd apps/web
+NEXT_DIST_DIR=.next-verify DATABASE_URL=file:./data/verify.db npx next build
+```
+
 ## APIs (consumed by mobile)
 
 Sports data responses are cached at the edge for 60 s (20 s for the daily scoreboard).
@@ -174,16 +227,21 @@ Sports data responses are cached at the edge for 60 s (20 s for the daily scoreb
 | `GET /api/v1/leagues/:slug/matches/:id`           |                                                |
 | `GET /api/v1/leagues/:slug/matches/:id/comments`  | Public. Newest first, never cached             |
 | `POST /api/v1/leagues/:slug/matches/:id/comments` | Signed in. `{ "body": "..." }`                 |
+| `GET/POST /api/v1/news/:id/comments`              | Same rules, for an article thread              |
+| `POST /api/v1/comments/:id/vote`                  | Signed in. Toggles an upvote                   |
 | `DELETE /api/v1/comments/:id`                     | Signed in, own comments only                   |
+| `GET /api/v1/news`                                | `leagues` (comma-separated), `limit`           |
+| `GET /api/v1/news/:id`                            | One article's headline and summary             |
 | `GET /api/v1/leagues/:slug/teams/:id`             |                                                |
 | `GET /api/v1/leagues/:slug/players/:id`           |                                                |
 | `GET /api/v1/leagues/:slug/scorers`               | `limit` (max 50)                               |
 | `GET /api/v1/matches`                             | `date` (YYYY-MM-DD, default today)             |
 | `/api/auth/*`                                     | better-auth: sign-up, sign-in, verify, session |
 
-Slugs: `premier-league`, `la-liga`, `serie-a`, `bundesliga`, `ligue-1`. Detail routes answer `501`
+Slugs: see `GET /api/v1/leagues`, which lists every competition the active data source covers,
+with its category, `hasTable` and `hasScorers`. Detail routes answer `501`
 when the configured source cannot serve them. Comment errors carry a machine-readable code
-(`unauthorized`, `empty`, `tooLong`, `tooFast`, `notFound`) so each client shows its own translation.
+(`unauthorized`, `empty`, `tooLong`, `tooFast`, `notFound`, `ownComment`) so each client shows its own translation.
 
 ## About the ESPN source
 
@@ -194,6 +252,8 @@ guarantee, so treat it as a convenience for development and personal use.
 - There is no matchday concept, so fixtures navigate by month and match groups show a count.
 - The standings feed has no form column. Form is derived from the last two months of results.
 - The scorers feed has only full club names, so clubs are matched to the table for short names.
+- The friendlies feed is worldwide. Only friendlies involving a European nation are kept, and
+  the list of European nations is read from the Nations League table.
 - Player profiles live on a second host (`site.web.api.espn.com`). Most players have no headshot.
 - Crests and league logos are served from ESPN's CDN. They are trademarks of the clubs and
   leagues. Check licensing before running this commercially, and swap the provider if needed.
@@ -211,9 +271,11 @@ Deliberate differences from the prototype:
 - **Goalscorers on hover.** Hovering or focusing a match row opens a panel with scorers and
   sendings-off. Clicking the row opens the match page.
 - **Real accounts** replace the prototype's name-only local profile. Comments are real and
-  stored. Match ratings and comment votes are not built.
-- **No Champions League filter.** Only the five domestic leagues are configured.
+  stored, with upvotes. Match ratings are not built.
 - **Match groups show a match count**, because the data source has no matchday numbers.
+- **Articles link out** to the publisher for the full text instead of showing a body.
+- **The match column's minimum width is 480px, not 560px**, so the table still sits beside the
+  matches at 1280px now that the news sidebar takes 280px.
 
 ## Adding the mobile app
 

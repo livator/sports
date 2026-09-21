@@ -55,6 +55,10 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+/**
+ * Document, providers, navigation and footer. The page frame (`<Shell>`) is added by each
+ * section: the home page brings its own sidebar, everything else uses `(site)/layout.tsx`.
+ */
 export default async function LocaleLayout({ children, params }: Props) {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
@@ -73,9 +77,7 @@ export default async function LocaleLayout({ children, params }: Props) {
                   <Suspense fallback={null}>
                     <VerifiedNotice />
                   </Suspense>
-                  <main className="mx-auto w-full max-w-[1240px] flex-1 px-[clamp(16px,4vw,48px)] pb-16">
-                    {children}
-                  </main>
+                  {children}
                   <SiteFooter source={getProvider().name} />
                 </div>
               </AuthUiProvider>

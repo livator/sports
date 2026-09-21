@@ -5,9 +5,12 @@ import {
   mapEvents,
   mapScorers,
   mapStandings,
+  mapStandingsGroups,
   mapStatus,
   seasonLabel,
+  zoneFromNote,
   type EspnEvent,
+  type EspnTeam,
 } from '../providers/espn/mappers';
 import { computeForm } from '../standings';
 import { monthBounds, monthsBetween, shiftIsoDate, shiftIsoMonth } from '../utils/format';
@@ -153,6 +156,63 @@ describe('ESPN mappers', () => {
       goalDifference: 7,
       points: 12,
     });
+  });
+
+  it('reads zones from ESPN table notes', () => {
+    const cases: Array<[string | undefined, ReturnType<typeof zoneFromNote>]> = [
+      [undefined, null],
+      ['Champions League', 'champions-league'],
+      ['Champions League qualifying', 'champions-league'],
+      ['Europa League qualifying', 'europa-league'],
+      ['Conference League qualifying', 'conference-league'],
+      ['Relegation playoff', 'relegation-playoff'],
+      ['Relegation playoffs', 'relegation-playoff'],
+      ['Relegation', 'relegation'],
+      ['Relegated', 'relegation'],
+      ['Qualifies for round of 16', 'advance'],
+      ['Knockout phase playoffs - seeded', 'playoff'],
+      ['Knockout phase playoffs - unseeded', 'playoff'],
+      ['Eliminated', 'eliminated'],
+      ['Championship playoffs', 'advance'],
+      ['European playoffs', 'playoff'],
+      ['Promotion', 'advance'],
+      ['Promotion playoffs', 'playoff'],
+      ['Qualifies for World Cup', 'advance'],
+      ['Qualifies for World Cup playoffs', 'playoff'],
+      ['A: Qualifies for QFs; B-D: Promotion playoffs', 'advance'],
+      ['A, B: Relegation; C: Relegation or playoffs', 'relegation'],
+      ['Best 8 advance', 'advance'],
+      ['Something unheard of', null],
+    ];
+    for (const [note, zone] of cases) expect(zoneFromNote(note), String(note)).toBe(zone);
+  });
+
+  it('keeps groups apart and flattens them for lookups', () => {
+    const entry = (team: EspnTeam, rank: number, note?: string) => ({
+      team,
+      ...(note ? { note: { description: note } } : {}),
+      stats: [{ name: 'rank', value: rank }],
+    });
+    const data = {
+      children: [
+        {
+          name: 'Group A1',
+          standings: { entries: [entry(bournemouth, 2), entry(liverpool, 1, 'Qualifies for QFs')] },
+        },
+        {
+          name: 'Group A2',
+          standings: { entries: [entry({ ...liverpool, id: '9' }, 1, 'Relegation')] },
+        },
+        { name: 'Empty', standings: { entries: [] } },
+      ],
+    };
+    const groups = mapStandingsGroups(data);
+    expect(groups.map((g) => g.name)).toEqual(['Group A1', 'Group A2']);
+    expect(groups[0]?.rows.map((r) => [r.team.id, r.position, r.zone])).toEqual([
+      ['364', 1, 'advance'],
+      ['349', 2, null],
+    ]);
+    expect(mapStandings(data).map((r) => r.team.id)).toEqual(['364', '349', '9']);
   });
 
   it('maps top scorers', () => {

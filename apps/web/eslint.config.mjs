@@ -12,7 +12,7 @@ const config = [
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
-  { ignores: ['.next/**', 'next-env.d.ts'] },
+  { ignores: ['.next/**', '.next-verify/**', 'next-env.d.ts'] },
 ];
 
 export default config;

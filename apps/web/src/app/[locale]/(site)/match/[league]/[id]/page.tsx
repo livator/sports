@@ -18,7 +18,8 @@ import { LiveRefresh } from '@/components/live-refresh';
 import { LocalTime } from '@/components/local-time';
 import { BackLink } from '@/components/page-header';
 import { Link } from '@/i18n/navigation';
-import { countComments, isValidMatchId } from '@/lib/comments';
+import { countComments, isValidThreadId } from '@/lib/comments';
+import { competitionName } from '@/lib/competitions';
 import { getProvider, safe } from '@/lib/provider';
 import { scoreText, statusLabel, statusTone, teamHref, toneClass } from '@/lib/view';
 
@@ -30,7 +31,7 @@ type Tab = 'summary' | 'stats' | 'comments';
 
 async function load(leagueSlug: string, id: string): Promise<MatchDetail | null | 'unsupported'> {
   const league = findLeague(leagueSlug);
-  if (!league || !isValidMatchId(id)) notFound();
+  if (!league || !isValidThreadId(id)) notFound();
   const provider = getProvider();
   if (!provider.getMatch) return 'unsupported';
   return safe(provider.getMatch(league.slug, id));
@@ -105,11 +106,12 @@ export default async function MatchPage({ params, searchParams }: Props) {
   if (!league) notFound();
   const t = await getTranslations('match');
   const ts = await getTranslations('status');
+  const tc = await getTranslations('competitions');
 
   const [detail, commentCount] = await Promise.all([
     load(leagueSlug, id),
     // Comments live in our own database, so a hiccup there must not take the match page down.
-    safe(countComments(league.slug, id)),
+    safe(countComments({ type: 'match', league: league.slug, matchId: id })),
   ]);
 
   if (detail === 'unsupported' || !detail) {
@@ -179,8 +181,11 @@ export default async function MatchPage({ params, searchParams }: Props) {
       {live && <LiveRefresh />}
       <BackLink href="/" label={t('back')} />
       <div className="flex flex-wrap justify-between gap-2 pt-7 pb-3 kicker">
-        <Link href={`/tables/${league.slug}`} className="text-accent-700 hover:text-accent">
-          {league.name}
+        <Link
+          href={league.hasTable ? `/tables/${league.slug}` : `/?league=${league.slug}`}
+          className="text-accent-700 hover:text-accent"
+        >
+          {competitionName(league, tc)}
         </Link>
         <span>
           <LocalTime iso={match.kickoff} mode="date" />
@@ -228,7 +233,9 @@ export default async function MatchPage({ params, searchParams }: Props) {
       </div>
 
       {tab === 'comments' ? (
-        <Comments league={league.slug} matchId={match.id} />
+        <div className="max-w-[720px] pt-3">
+          <Comments thread={{ type: 'match', league: league.slug, matchId: match.id }} />
+        </div>
       ) : tab === 'stats' ? (
         stats.length > 0 ? (
           <StatBars

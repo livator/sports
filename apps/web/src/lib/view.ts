@@ -1,4 +1,11 @@
-import { isLive, zoneForPosition, type League, type LeagueSlug, type Match } from '@sports/core';
+import {
+  isLive,
+  zoneOf,
+  type League,
+  type LeagueSlug,
+  type Match,
+  type ZoneKind,
+} from '@sports/core';
 
 /** Presentation helpers shared by server and client components. No React in here. */
 
@@ -56,33 +63,44 @@ export const matchHref = (m: Pick<Match, 'leagueSlug' | 'id'>) => `/match/${m.le
 export const teamHref = (league: LeagueSlug, teamId: string) => `/team/${league}/${teamId}`;
 export const playerHref = (league: LeagueSlug, playerId: string) => `/player/${league}/${playerId}`;
 
-/** Link to the scoreboard for a day and league filter, keeping the URL clean for defaults. */
+/**
+ * Link to the scoreboard for a day and a competition filter, keeping the URL clean for
+ * defaults. `league` is a competition slug, a category key, or undefined for everything.
+ */
 export function homeHref(opts: {
   date: string;
   today: string;
-  league: LeagueSlug | 'all';
+  league?: string | undefined;
 }): string {
   const params = new URLSearchParams();
   if (opts.date !== opts.today) params.set('date', opts.date);
-  if (opts.league !== 'all') params.set('league', opts.league);
+  if (opts.league) params.set('league', opts.league);
   const query = params.toString();
   return query ? `/?${query}` : '/';
 }
 
-/** Left-edge colour for a table position: accent for the Champions League, ink for other Europe, grey for the drop. */
-export function zoneEdgeClass(league: League, position: number): string {
-  switch (zoneForPosition(league, position)) {
-    case 'champions-league':
-      return 'border-l-accent';
-    case 'europa-league':
-    case 'conference-league':
-      return 'border-l-ink';
-    case 'relegation':
-    case 'relegation-playoff':
-      return 'border-l-neutral-400';
-    default:
-      return 'border-l-transparent';
-  }
+/** Accent for the best outcome, ink for the next tier, grey for the way out. */
+export const zoneTone: Record<ZoneKind, 'accent' | 'ink' | 'grey'> = {
+  'champions-league': 'accent',
+  advance: 'accent',
+  'europa-league': 'ink',
+  'conference-league': 'ink',
+  playoff: 'ink',
+  'relegation-playoff': 'grey',
+  relegation: 'grey',
+  eliminated: 'grey',
+};
+
+const edgeClass = { accent: 'border-l-accent', ink: 'border-l-ink', grey: 'border-l-neutral-400' };
+export const zoneSwatchClass = { accent: 'bg-accent', ink: 'bg-ink', grey: 'bg-neutral-400' };
+
+/** Left-edge colour for a table row, from the data source's zone or the configured fallback. */
+export function zoneEdgeClass(
+  league: League,
+  row: { position: number; zone?: ZoneKind | null },
+): string {
+  const zone = zoneOf(league, row);
+  return zone ? edgeClass[zoneTone[zone]] : 'border-l-transparent';
 }
 
 export function seasonLabelFor(date: Date): string {

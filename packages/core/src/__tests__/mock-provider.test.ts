@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { LEAGUES } from '../leagues';
 import { MockProvider } from '../providers/mock';
 import { roundRobin } from '../providers/mock/season';
 
@@ -37,14 +36,16 @@ describe('MockProvider', () => {
   });
 
   it('produces a full season for every league', async () => {
-    for (const league of LEAGUES) {
+    const leagues = await provider.getLeagues();
+    expect(leagues.map((l) => l.category)).toEqual(Array(5).fill('top5'));
+    for (const league of leagues) {
       const matches = await provider.getMatches(league.slug);
-      const n = league.teamCount;
+      const n = league.teamCount!;
       expect(matches).toHaveLength(n * (n - 1));
       const season = await provider.getSeason(league.slug);
       expect(season.totalMatchdays).toBe((n - 1) * 2);
       expect(season.currentMatchday).toBeGreaterThan(1);
-      expect(season.currentMatchday).toBeLessThanOrEqual(season.totalMatchdays);
+      expect(season.currentMatchday).toBeLessThanOrEqual(season.totalMatchdays!);
     }
   });
 

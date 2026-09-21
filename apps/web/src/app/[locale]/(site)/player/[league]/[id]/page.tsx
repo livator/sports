@@ -8,6 +8,7 @@ import { Crest } from '@/components/crest';
 import { DataNotice } from '@/components/data-notice';
 import { BackLink } from '@/components/page-header';
 import { Link } from '@/i18n/navigation';
+import { competitionName } from '@/lib/competitions';
 import { getProvider, safe } from '@/lib/provider';
 import { seasonLabelFor, teamHref } from '@/lib/view';
 
@@ -69,7 +70,7 @@ export default async function PlayerPage({ params }: Props) {
   const facts = (
     [
       team ? [t('club'), team.shortName] : null,
-      [t('league'), league.name],
+      [t('league'), competitionName(league, await getTranslations('competitions'))],
       position ? [t('position'), position] : null,
       player.nationality ? [t('nationality'), player.nationality] : null,
       player.dateOfBirth ? [t('born'), player.dateOfBirth] : null,

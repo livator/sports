@@ -3,6 +3,7 @@ import type {
   LeagueSlug,
   Match,
   MatchDetail,
+  NewsArticle,
   PlayerDetail,
   Scorer,
   Season,
@@ -92,5 +93,13 @@ export class HttpProvider implements SportsDataProvider {
 
   getPlayer(league: LeagueSlug, playerId: string): Promise<PlayerDetail> {
     return this.get(`/leagues/${league}/players/${encodeURIComponent(playerId)}`);
+  }
+
+  getNews(leagues: readonly LeagueSlug[], limit?: number): Promise<NewsArticle[]> {
+    return this.get('/news', { leagues: leagues.join(',') || undefined, limit });
+  }
+
+  getArticle(articleId: string): Promise<NewsArticle> {
+    return this.get(`/news/${encodeURIComponent(articleId)}`);
   }
 }

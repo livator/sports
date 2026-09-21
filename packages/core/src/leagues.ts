@@ -1,4 +1,4 @@
-import type { League, LeagueSlug } from './types';
+import type { CompetitionCategory, League, LeagueSlug, ZoneKind } from './types';
 
 const standardZones = {
   championsLeague: 4,
@@ -8,72 +8,244 @@ const standardZones = {
   relegationPlayoff: 0,
 } as const;
 
-const leagueLogo = (id: number) => `https://a.espncdn.com/i/leaguelogos/soccer/500/${id}.png`;
+const logo = (id: number) => `https://a.espncdn.com/i/leaguelogos/soccer/500/${id}.png`;
 
+type Domestic = Pick<League, 'slug' | 'name' | 'shortName' | 'country' | 'countryCode'> &
+  Partial<Pick<League, 'logoUrl' | 'externalCode' | 'teamCount' | 'zones'>>;
+
+const domestic = (category: 'top5' | 'more', l: Domestic): League => ({
+  category,
+  hasTable: true,
+  hasScorers: true,
+  ...l,
+});
+
+const continental = (
+  category: 'uefa' | 'national',
+  l: Pick<League, 'slug' | 'name' | 'shortName' | 'hasTable' | 'hasScorers'> &
+    Partial<Pick<League, 'logoUrl' | 'externalCode'>>,
+): League => ({ category, country: 'Europe', countryCode: 'EU', ...l });
+
+/** Order of categories wherever competitions are listed: the biggest stage first. */
+export const CATEGORY_ORDER: readonly CompetitionCategory[] = ['uefa', 'national', 'top5', 'more'];
+
+/**
+ * Every competition, in display order. Match lists, chips and tables all follow this order,
+ * so a Champions League night leads the scoreboard without any special casing.
+ */
 export const LEAGUES: readonly League[] = [
-  {
+  continental('uefa', {
+    slug: 'champions-league',
+    name: 'Champions League',
+    shortName: 'UCL',
+    logoUrl: logo(2),
+    externalCode: 'CL',
+    hasTable: true,
+    hasScorers: true,
+  }),
+  continental('uefa', {
+    slug: 'europa-league',
+    name: 'Europa League',
+    shortName: 'UEL',
+    logoUrl: logo(2310),
+    hasTable: true,
+    hasScorers: true,
+  }),
+  continental('uefa', {
+    slug: 'conference-league',
+    name: 'Conference League',
+    shortName: 'UECL',
+    logoUrl: logo(20296),
+    hasTable: true,
+    hasScorers: true,
+  }),
+
+  continental('national', {
+    slug: 'nations-league',
+    name: 'Nations League',
+    shortName: 'Nations',
+    logoUrl: logo(2395),
+    hasTable: true,
+    hasScorers: false,
+  }),
+  continental('national', {
+    slug: 'euro-qualifying',
+    name: 'Euro Qualifying',
+    shortName: 'Euro Q',
+    logoUrl: logo(56),
+    hasTable: true,
+    hasScorers: false,
+  }),
+  continental('national', {
+    slug: 'friendlies',
+    name: 'International Friendlies',
+    shortName: 'Friendlies',
+    logoUrl: logo(53),
+    hasTable: false,
+    hasScorers: false,
+  }),
+
+  domestic('top5', {
     slug: 'premier-league',
     name: 'Premier League',
     shortName: 'PL',
     country: 'England',
     countryCode: 'GB',
-    logoUrl: leagueLogo(23),
+    logoUrl: logo(23),
     externalCode: 'PL',
     teamCount: 20,
-    colors: { primary: '#3d195b', secondary: '#00ff85' },
     zones: { ...standardZones, championsLeague: 5 },
-  },
-  {
+  }),
+  domestic('top5', {
     slug: 'la-liga',
     name: 'LaLiga',
     shortName: 'LaLiga',
     country: 'Spain',
     countryCode: 'ES',
-    logoUrl: leagueLogo(15),
+    logoUrl: logo(15),
     externalCode: 'PD',
     teamCount: 20,
-    colors: { primary: '#ee8707', secondary: '#ffffff' },
     zones: { ...standardZones, championsLeague: 5 },
-  },
-  {
+  }),
+  domestic('top5', {
     slug: 'serie-a',
     name: 'Serie A',
     shortName: 'Serie A',
     country: 'Italy',
     countryCode: 'IT',
-    logoUrl: leagueLogo(12),
+    logoUrl: logo(12),
     externalCode: 'SA',
     teamCount: 20,
-    colors: { primary: '#024494', secondary: '#1de9b6' },
     zones: { ...standardZones },
-  },
-  {
+  }),
+  domestic('top5', {
     slug: 'bundesliga',
     name: 'Bundesliga',
     shortName: 'Bundesliga',
     country: 'Germany',
     countryCode: 'DE',
-    logoUrl: leagueLogo(10),
+    logoUrl: logo(10),
     externalCode: 'BL1',
     teamCount: 18,
-    colors: { primary: '#d20515', secondary: '#ffffff' },
     zones: { ...standardZones, relegation: 2, relegationPlayoff: 1 },
-  },
-  {
+  }),
+  domestic('top5', {
     slug: 'ligue-1',
     name: 'Ligue 1',
     shortName: 'Ligue 1',
     country: 'France',
     countryCode: 'FR',
-    logoUrl: leagueLogo(9),
+    logoUrl: logo(9),
     externalCode: 'FL1',
     teamCount: 18,
-    colors: { primary: '#091c3e', secondary: '#dae025' },
     zones: { ...standardZones, relegation: 2, relegationPlayoff: 1 },
-  },
+  }),
+
+  domestic('more', {
+    slug: 'eredivisie',
+    name: 'Eredivisie',
+    shortName: 'Eredivisie',
+    country: 'Netherlands',
+    countryCode: 'NL',
+    logoUrl: logo(11),
+    externalCode: 'DED',
+    teamCount: 18,
+  }),
+  domestic('more', {
+    slug: 'primeira-liga',
+    name: 'Primeira Liga',
+    shortName: 'Primeira',
+    country: 'Portugal',
+    countryCode: 'PT',
+    logoUrl: logo(14),
+    externalCode: 'PPL',
+    teamCount: 18,
+  }),
+  domestic('more', {
+    slug: 'belgian-pro-league',
+    name: 'Belgian Pro League',
+    shortName: 'Pro League',
+    country: 'Belgium',
+    countryCode: 'BE',
+    logoUrl: logo(6),
+    teamCount: 18,
+  }),
+  domestic('more', {
+    slug: 'super-lig',
+    name: 'Süper Lig',
+    shortName: 'Süper Lig',
+    country: 'Turkey',
+    countryCode: 'TR',
+    logoUrl: logo(18),
+    teamCount: 18,
+  }),
+  domestic('more', {
+    slug: 'scottish-premiership',
+    name: 'Scottish Premiership',
+    shortName: 'Scotland',
+    country: 'Scotland',
+    countryCode: 'GB',
+    logoUrl: logo(45),
+    teamCount: 12,
+  }),
+  domestic('more', {
+    slug: 'super-league-greece',
+    name: 'Super League Greece',
+    shortName: 'Greece',
+    country: 'Greece',
+    countryCode: 'GR',
+    logoUrl: logo(98),
+    teamCount: 14,
+  }),
+  domestic('more', {
+    slug: 'austrian-bundesliga',
+    name: 'Austrian Bundesliga',
+    shortName: 'Austria',
+    country: 'Austria',
+    countryCode: 'AT',
+    logoUrl: logo(5),
+    teamCount: 12,
+  }),
+  domestic('more', {
+    slug: 'danish-superliga',
+    name: 'Danish Superliga',
+    shortName: 'Denmark',
+    country: 'Denmark',
+    countryCode: 'DK',
+    teamCount: 12,
+  }),
+  domestic('more', {
+    slug: 'allsvenskan',
+    name: 'Allsvenskan',
+    shortName: 'Sweden',
+    country: 'Sweden',
+    countryCode: 'SE',
+    logoUrl: logo(16),
+    teamCount: 16,
+  }),
+  domestic('more', {
+    slug: 'eliteserien',
+    name: 'Eliteserien',
+    shortName: 'Norway',
+    country: 'Norway',
+    countryCode: 'NO',
+    teamCount: 16,
+  }),
+  domestic('more', {
+    slug: 'russian-premier-league',
+    name: 'Russian Premier League',
+    shortName: 'Russia',
+    country: 'Russia',
+    countryCode: 'RU',
+    logoUrl: logo(106),
+    teamCount: 16,
+  }),
 ];
 
 export const LEAGUE_SLUGS = LEAGUES.map((l) => l.slug) as readonly LeagueSlug[];
+
+/** Where "Tables" and the scoreboard sidebar land when nothing is selected. */
+export const DEFAULT_LEAGUE: LeagueSlug = 'premier-league';
 
 export function isLeagueSlug(value: string): value is LeagueSlug {
   return (LEAGUE_SLUGS as readonly string[]).includes(value);
@@ -89,12 +261,24 @@ export function findLeague(slug: string): League | undefined {
   return isLeagueSlug(slug) ? getLeague(slug) : undefined;
 }
 
-export type ZoneKind =
-  'champions-league' | 'europa-league' | 'conference-league' | 'relegation-playoff' | 'relegation';
+export function isCompetitionCategory(value: string): value is CompetitionCategory {
+  return (CATEGORY_ORDER as readonly string[]).includes(value);
+}
 
-/** Returns the qualification/relegation zone for a table position, or null for mid-table. */
+export function leaguesIn(
+  category: CompetitionCategory,
+  leagues: readonly League[] = LEAGUES,
+): League[] {
+  return leagues.filter((l) => l.category === category);
+}
+
+/**
+ * Fallback zone for a table position, from `League.zones`. Returns null for mid-table and
+ * for competitions without configured zones. Prefer `StandingRow.zone` when it is defined.
+ */
 export function zoneForPosition(league: League, position: number): ZoneKind | null {
   const { zones, teamCount } = league;
+  if (!zones || !teamCount) return null;
   const cl = zones.championsLeague;
   const el = cl + zones.europaLeague;
   const ecl = el + zones.conferenceLeague;
@@ -108,4 +292,12 @@ export function zoneForPosition(league: League, position: number): ZoneKind | nu
   if (position >= relegationStart) return 'relegation';
   if (zones.relegationPlayoff > 0 && position >= playoffStart) return 'relegation-playoff';
   return null;
+}
+
+/** The zone to show for a row: what the data source says, else the configured fallback. */
+export function zoneOf(
+  league: League,
+  row: { position: number; zone?: ZoneKind | null },
+): ZoneKind | null {
+  return row.zone !== undefined ? row.zone : zoneForPosition(league, row.position);
 }

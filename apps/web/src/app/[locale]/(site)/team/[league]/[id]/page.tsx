@@ -10,6 +10,7 @@ import { FormPips } from '@/components/form-pips';
 import { LocalTime } from '@/components/local-time';
 import { BackLink } from '@/components/page-header';
 import { Link } from '@/i18n/navigation';
+import { competitionName } from '@/lib/competitions';
 import { getProvider, safe } from '@/lib/provider';
 import { matchHref, playerHref, scoreText, sideWeight } from '@/lib/view';
 
@@ -57,14 +58,13 @@ export default async function TeamPage({ params }: Props) {
   if (!league) notFound();
   const t = await getTranslations('team');
   const tf = await getTranslations('fixtures');
+  const name = competitionName(league, await getTranslations('competitions'));
 
   const [detail, standings] = await Promise.all([
     load(leagueSlug, id),
     safe(getProvider().getStandings(league.slug)),
   ]);
-  const back = (
-    <BackLink href={`/tables/${league.slug}`} label={tf('back', { league: league.name })} />
-  );
+  const back = <BackLink href={`/tables/${league.slug}`} label={tf('back', { league: name })} />;
 
   if (detail === 'unsupported' || !detail) {
     return (
@@ -96,14 +96,21 @@ export default async function TeamPage({ params }: Props) {
           <Crest team={team} size={72} />
           <div className="min-w-0">
             <span className="mb-2 block kicker">
-              {row ? t('kicker', { league: league.name, pos: row.position }) : league.name}
+              {row ? t('kicker', { league: name, pos: row.position }) : name}
             </span>
             <h1 className="text-[clamp(32px,4.5vw,56px)] leading-[1.02] font-extrabold tracking-[-0.02em]">
               {team.name}
             </h1>
           </div>
         </div>
-        <FollowButton club={{ id: team.id, name: team.shortName, league: league.slug }} />
+        <FollowButton
+          club={{
+            id: team.id,
+            name: team.shortName,
+            league: league.slug,
+            ...(team.crestUrl ? { crestUrl: team.crestUrl } : {}),
+          }}
+        />
       </div>
       <div className="rule-2" />
 

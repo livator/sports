@@ -14,8 +14,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/', priority: 1 },
     { path: '/players', priority: 0.7, daily: true },
     ...LEAGUES.flatMap((l) => [
-      { path: `/tables/${l.slug}`, priority: 0.9 },
-      { path: `/tables/${l.slug}/fixtures`, priority: 0.8 },
+      // Friendlies have fixtures but no table.
+      ...(l.hasTable
+        ? [{ path: `/tables/${l.slug}`, priority: l.category === 'more' ? 0.7 : 0.9 }]
+        : []),
+      { path: `/tables/${l.slug}/fixtures`, priority: l.category === 'more' ? 0.6 : 0.8 },
     ]),
   ];
 

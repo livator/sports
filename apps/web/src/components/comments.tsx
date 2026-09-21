@@ -4,8 +4,9 @@ import {
   COMMENT_MAX_LENGTH,
   CommentRequestError,
   CommentsClient,
+  threadKey,
   type CommentErrorCode,
-  type LeagueSlug,
+  type CommentThread,
   type MatchComment,
 } from '@sports/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -16,13 +17,12 @@ import { useAuthUi, useSessionUser } from './auth-dialog';
 
 type ShownError = Exclude<CommentErrorCode, 'notFound'>;
 
-const draftKey = (league: string, matchId: string) => `pitchside.draft.${league}.${matchId}`;
-
 /**
- * Comments for one match. Anyone can read. Guests can write too: pressing "Post" opens the
- * log in / create account dialog, the draft is kept, and after logging in it is posted.
+ * Comments for a match or an article. Anyone can read. Guests can write too: pressing "Post"
+ * (or an upvote) opens the log in / create account dialog, the draft is kept, and after
+ * logging in the comment is posted.
  */
-export function Comments({ league, matchId }: { league: LeagueSlug; matchId: string }) {
+export function Comments({ thread }: { thread: CommentThread }) {
   const t = useTranslations('comments');
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
@@ -31,7 +31,10 @@ export function Comments({ league, matchId }: { league: LeagueSlug; matchId: str
   const queryClient = useQueryClient();
   // A relative base keeps this safe during server rendering; the browser resolves it to this origin.
   const client = useMemo(() => new CommentsClient({ baseUrl: '' }), []);
-  const queryKey = useMemo(() => ['comments', league, matchId] as const, [league, matchId]);
+  const key = threadKey(thread);
+  // The viewer is part of the key: whose upvotes are highlighted depends on who is asking.
+  const queryKey = useMemo(() => ['comments', key, user?.id ?? 'guest'] as const, [key, user?.id]);
+  const draftKey = `pitchside.draft.${key}`;
 
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<ShownError | null>(null);
@@ -41,18 +44,18 @@ export function Comments({ league, matchId }: { league: LeagueSlug; matchId: str
   // Keep the draft across the log in dialog and the email verification round trip.
   useEffect(() => {
     try {
-      setDraft(localStorage.getItem(draftKey(league, matchId)) ?? '');
+      setDraft(localStorage.getItem(draftKey) ?? '');
     } catch {
       // Storage blocked: the draft simply is not restored.
     }
-  }, [league, matchId]);
+  }, [draftKey]);
 
   const updateDraft = (value: string) => {
     setDraft(value);
     setError(null);
     try {
-      if (value) localStorage.setItem(draftKey(league, matchId), value);
-      else localStorage.removeItem(draftKey(league, matchId));
+      if (value) localStorage.setItem(draftKey, value);
+      else localStorage.removeItem(draftKey);
     } catch {
       // Ignore: see above.
     }
@@ -60,31 +63,47 @@ export function Comments({ league, matchId }: { league: LeagueSlug; matchId: str
 
   const comments = useQuery({
     queryKey,
-    queryFn: () => client.list(league, matchId),
+    queryFn: () => client.list(thread),
     refetchInterval: 30_000,
   });
 
+  const patch = (update: (list: MatchComment[]) => MatchComment[]) =>
+    queryClient.setQueriesData<MatchComment[]>({ queryKey: ['comments', key] }, (old) =>
+      old ? update(old) : old,
+    );
+
+  const fail = (err: unknown) => {
+    const code = err instanceof CommentRequestError ? err.code : 'generic';
+    setError(code === 'notFound' ? 'generic' : code);
+    return code;
+  };
+
   const post = useMutation({
-    mutationFn: (body: string) => client.post(league, matchId, body),
+    mutationFn: (body: string) => client.post(thread, body),
     onSuccess: (comment) => {
-      queryClient.setQueryData<MatchComment[]>(queryKey, (old = []) => [comment, ...old]);
+      // After a log in the viewer-specific list may not exist yet; refetch covers that case.
+      patch((list) => [comment, ...list]);
+      void queryClient.invalidateQueries({ queryKey: ['comments', key] });
       updateDraft('');
     },
     onError: (err) => {
-      const code = err instanceof CommentRequestError ? err.code : 'generic';
-      if (code === 'unauthorized') {
-        openAuth({ reason: 'comment', onSignedIn: () => post.mutate(draftRef.current) });
+      if (fail(err) === 'unauthorized') {
+        openAuth({ reason: 'comment', onSignedIn: () => post.mutate(draftRef.current.trim()) });
       }
-      setError(code === 'notFound' ? 'generic' : code);
     },
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => client.remove(id),
-    onSuccess: (_data, id) =>
-      queryClient.setQueryData<MatchComment[]>(queryKey, (old = []) =>
-        old.filter((c) => c.id !== id),
-      ),
+    onSuccess: (_data, id) => patch((list) => list.filter((c) => c.id !== id)),
+    onError: fail,
+  });
+
+  const vote = useMutation({
+    mutationFn: (id: string) => client.vote(id),
+    onSuccess: (result, id) =>
+      patch((list) => list.map((c) => (c.id === id ? { ...c, ...result } : c))),
+    onError: fail,
   });
 
   const submit = (e: FormEvent) => {
@@ -103,15 +122,15 @@ export function Comments({ league, matchId }: { league: LeagueSlug; matchId: str
   const remaining = COMMENT_MAX_LENGTH - [...draft].length;
 
   return (
-    <div className="max-w-[720px] pt-8">
-      <form onSubmit={submit} className="flex flex-col gap-3 border-b-2 pb-7">
+    <div>
+      <form onSubmit={submit} className="flex flex-col gap-3 border-b-2 pt-5 pb-7">
         <label className="sr-only" htmlFor="comment-body">
           {t('label')}
         </label>
         <textarea
           id="comment-body"
           className="input min-h-[72px] resize-y"
-          placeholder={t('placeholder')}
+          placeholder={thread.type === 'article' ? t('placeholderArticle') : t('placeholder')}
           value={draft}
           onChange={(e) => updateDraft(e.target.value)}
           maxLength={COMMENT_MAX_LENGTH * 2}
@@ -147,7 +166,10 @@ export function Comments({ league, matchId }: { league: LeagueSlug; matchId: str
           {comments.data.map((c) => {
             const mine = user?.id === c.author.id;
             return (
-              <li key={c.id} className="grid grid-cols-[36px_minmax(0,1fr)] gap-3.5 border-b py-5">
+              <li
+                key={c.id}
+                className="grid grid-cols-[36px_minmax(0,1fr)_auto] gap-3.5 border-b py-5"
+              >
                 <span
                   aria-hidden
                   className={`grid size-9 place-items-center text-xs font-extrabold text-ground ${mine ? 'bg-accent' : 'bg-ink'}`}
@@ -164,7 +186,7 @@ export function Comments({ league, matchId }: { league: LeagueSlug; matchId: str
                     {mine && (
                       <button
                         type="button"
-                        className="ml-auto cursor-pointer text-ink-3 hover:text-accent"
+                        className="cursor-pointer text-ink-3 hover:text-accent"
                         onClick={() => remove.mutate(c.id)}
                         disabled={remove.isPending}
                       >
@@ -176,6 +198,22 @@ export function Comments({ league, matchId }: { league: LeagueSlug; matchId: str
                     {c.body}
                   </p>
                 </div>
+                <button
+                  type="button"
+                  aria-pressed={c.voted}
+                  aria-label={c.voted ? t('removeUpvote') : t('upvote')}
+                  title={mine ? t('errors.ownComment', { max: COMMENT_MAX_LENGTH }) : undefined}
+                  disabled={mine || vote.isPending}
+                  onClick={() => (user ? vote.mutate(c.id) : openAuth())}
+                  className={`flex cursor-pointer flex-col items-center gap-0.5 self-start border px-2.5 py-1.5 tnum text-[13px] font-bold disabled:cursor-default disabled:opacity-50 ${
+                    c.voted ? 'border-accent text-accent-700' : 'hover:bg-hover'
+                  }`}
+                >
+                  <span aria-hidden className="text-[10px]">
+                    ▲
+                  </span>
+                  {c.votes}
+                </button>
               </li>
             );
           })}

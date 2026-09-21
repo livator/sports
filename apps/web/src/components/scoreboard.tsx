@@ -5,6 +5,7 @@ import { useMatchesByDate } from '@sports/query';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 import { Link } from '@/i18n/navigation';
+import { competitionName } from '@/lib/competitions';
 import { matchHref, sideWeight, statusLabel, statusTone, toneClass } from '@/lib/view';
 import { useFavourites } from './favourites';
 import { LocalTime } from './local-time';
@@ -20,6 +21,7 @@ const stripOrder = { live: 0, done: 1, upcoming: 2 };
 /** Compact card for the horizontal strip: live first, then results, then fixtures. */
 function StripCard({ match }: { match: Match }) {
   const ts = useTranslations('status');
+  const tc = useTranslations('competitions');
   const tone = statusTone(match);
   const scheduled = match.status === 'scheduled';
   const league = LEAGUES.find((l) => l.slug === match.leagueSlug);
@@ -29,10 +31,12 @@ function StripCard({ match }: { match: Match }) {
       className={`flex w-[168px] flex-none flex-col gap-2 border-t-2 bg-surface px-3 py-2.5 hover:bg-neutral-300 ${stripEdge[tone]}`}
     >
       <span className="flex justify-between gap-2 tnum text-[11px] font-bold tracking-[0.06em] uppercase">
-        <span className={`truncate ${toneClass[tone]}`}>
+        <span className={`flex-none ${toneClass[tone]}`}>
           {scheduled ? <LocalTime iso={match.kickoff} /> : statusLabel(match, ts)}
         </span>
-        <span className="flex-none text-ink-3">{league?.shortName}</span>
+        <span className="truncate text-ink-3">
+          {league ? competitionName(league, tc, true) : ''}
+        </span>
       </span>
       {(['home', 'away'] as const).map((side) => (
         <span
@@ -64,7 +68,7 @@ function Group({
 }) {
   return (
     <section className="mb-9">
-      <div className="flex items-baseline justify-between pb-2.5">
+      <div className="flex items-baseline justify-between gap-3 pb-2.5">
         {accent ? (
           <h2 className="flex items-center gap-2.5 kicker font-normal">
             <span aria-hidden className="size-2.5 bg-accent" />
@@ -81,7 +85,7 @@ function Group({
             )}
           </h2>
         )}
-        {meta && <span className="text-xs text-ink-3">{meta}</span>}
+        {meta && <span className="flex-none text-xs text-ink-3">{meta}</span>}
       </div>
       <div className="rule-2" />
       {matches.map((m) => (
@@ -92,23 +96,28 @@ function Group({
 }
 
 /**
- * The day's matches: strip, league chips, then matches grouped by league with the
- * viewer's clubs pinned first. Server-rendered from `initialMatches`, then kept live.
+ * The day's matches: strip, competition picker, then matches grouped by competition with
+ * the viewer's clubs pinned first. Server-rendered from `initialMatches`, then kept live.
  */
 export function Scoreboard({
   date,
-  league,
+  slugs,
+  scope,
   initialMatches,
-  chips,
+  picker,
   aside,
 }: {
   date: string;
-  league: LeagueSlug | 'all';
+  /** Competitions to show, or null for all of them. */
+  slugs: LeagueSlug[] | null;
+  /** How wide the filter is, which picks the right "nothing on today" message. */
+  scope: 'all' | 'category' | 'league';
   initialMatches: Match[] | null;
-  chips: ReactNode;
+  picker: ReactNode;
   aside: ReactNode;
 }) {
   const t = useTranslations('home');
+  const tc = useTranslations('competitions');
   const { favs } = useFavourites();
   const { data, isError } = useMatchesByDate(
     date,
@@ -116,15 +125,23 @@ export function Scoreboard({
   );
 
   const all = data ?? [];
-  const liveCount = all.filter((m) => isLive(m.status)).length;
-  const filtered = league === 'all' ? all : all.filter((m) => m.leagueSlug === league);
+  const wanted = slugs ? new Set<string>(slugs) : null;
+  const filtered = wanted ? all.filter((m) => wanted.has(m.leagueSlug)) : all;
+  const liveCount = filtered.filter((m) => isLive(m.status)).length;
   const favIds = new Set(favs.map((f) => f.id));
   const mine = filtered.filter((m) => favIds.has(m.homeTeam.id) || favIds.has(m.awayTeam.id));
   const mineIds = new Set(mine.map((m) => m.id));
-  const strip = [...all].sort(
+  // The strip always follows the filter, so picking "UEFA" shows only UEFA cards.
+  const strip = [...filtered].sort(
     (a, b) =>
       stripOrder[statusTone(a)] - stripOrder[statusTone(b)] || a.kickoff.localeCompare(b.kickoff),
   );
+  const empty =
+    scope === 'all'
+      ? t('noMatchesAll')
+      : scope === 'category'
+        ? t('noMatchesGroup')
+        : t('noMatchesLeague');
 
   return (
     <>
@@ -136,24 +153,23 @@ export function Scoreboard({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-x-6 border-b py-3.5">
-        {chips}
-        <div className="flex items-center gap-2 tnum text-[13px] text-ink-2">
+      <div className="flex flex-wrap items-start gap-x-6 gap-y-2 border-b py-3.5">
+        {picker}
+        <div className="flex items-center gap-2 py-1.5 tnum text-[13px] text-ink-2">
           {liveCount > 0 && <span aria-hidden className="size-2 animate-pulse-live bg-accent" />}
           {liveCount > 0
-            ? t('liveNow', { live: liveCount, count: all.length })
-            : t('matchCount', { count: all.length })}
+            ? t('liveNow', { live: liveCount, count: filtered.length })
+            : t('matchCount', { count: filtered.length })}
         </div>
       </div>
 
       <div className="flex flex-wrap gap-x-14 gap-y-10 pt-8">
-        <div className="min-w-0 flex-[1_1_560px]">
+        {/* 480 rather than the design's 560: with the news sidebar, 560 pushes the table below the matches at 1280px. */}
+        <div className="min-w-0 flex-[1_1_480px]">
           {!data ? (
             <p className="py-12 text-[17px] text-ink-2">{isError ? t('feedDown') : t('loading')}</p>
           ) : filtered.length === 0 ? (
-            <p className="py-12 text-[17px] text-ink-2">
-              {league === 'all' ? t('noMatchesAll') : t('noMatchesLeague')}
-            </p>
+            <p className="py-12 text-[17px] text-ink-2">{empty}</p>
           ) : (
             <>
               {mine.length > 0 && <Group title={t('yourClubs')} accent matches={mine} />}
@@ -165,8 +181,8 @@ export function Scoreboard({
                 return (
                   <Group
                     key={l.slug}
-                    title={l.name}
-                    href={`/tables/${l.slug}`}
+                    title={competitionName(l, tc)}
+                    {...(l.hasTable ? { href: `/tables/${l.slug}` } : {})}
                     meta={t('matchCount', { count: matches.length })}
                     matches={matches}
                   />

@@ -1,7 +1,7 @@
 import { useTranslations } from 'next-intl';
 
 export type NoticeKind =
-  'table' | 'fixtures' | 'scorers' | 'match' | 'team' | 'player' | 'unsupported';
+  'table' | 'fixtures' | 'scorers' | 'match' | 'team' | 'player' | 'article' | 'unsupported';
 
 /** Shown in place of a section whose data could not be loaded. */
 export function DataNotice({ kind }: { kind: NoticeKind }) {

@@ -17,7 +17,8 @@ function t(
   return { id, name, shortName, tla, colors: { primary, secondary }, strength };
 }
 
-export const SEED_TEAMS: Record<LeagueSlug, readonly SeedTeam[]> = {
+/** Only the top five leagues are simulated. The demo provider reports just those as available. */
+export const SEED_TEAMS: Partial<Record<LeagueSlug, readonly SeedTeam[]>> = {
   'premier-league': [
     t('ars', 'Arsenal FC', 'Arsenal', 'ARS', '#ef0107', '#ffffff', 90),
     t('avl', 'Aston Villa FC', 'Aston Villa', 'AVL', '#670e36', '#95bfe5', 78),

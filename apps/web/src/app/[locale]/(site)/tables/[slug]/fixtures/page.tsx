@@ -14,6 +14,7 @@ import { LocalTime } from '@/components/local-time';
 import { MatchRow } from '@/components/match-row';
 import { BackLink, PageHeader } from '@/components/page-header';
 import { Link } from '@/i18n/navigation';
+import { competitionName } from '@/lib/competitions';
 import { getProvider, safe } from '@/lib/provider';
 import { viewerToday } from '@/lib/today';
 
@@ -30,7 +31,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const league = findLeague(slug);
   if (!league) return {};
   const t = await getTranslations({ locale, namespace: 'fixtures' });
-  return { title: t('title', { league: league.name }) };
+  const tc = await getTranslations({ locale, namespace: 'competitions' });
+  return { title: t('title', { league: competitionName(league, tc) }) };
 }
 
 export default async function FixturesPage({ params, searchParams }: Props) {
@@ -39,6 +41,7 @@ export default async function FixturesPage({ params, searchParams }: Props) {
   const league = findLeague(slug);
   if (!league) notFound();
   const t = await getTranslations('fixtures');
+  const name = competitionName(league, await getTranslations('competitions'));
 
   const requested = (await searchParams).month;
   const current = (await viewerToday()).slice(0, 7);
@@ -59,9 +62,9 @@ export default async function FixturesPage({ params, searchParams }: Props) {
 
   return (
     <section>
-      <BackLink href={`/tables/${league.slug}`} label={t('back', { league: league.name })} />
+      <BackLink href={`/tables/${league.slug}`} label={t('back', { league: name })} />
       <PageHeader
-        kicker={t('kicker', { league: league.name })}
+        kicker={t('kicker', { league: name })}
         title={title}
         aside={
           <nav aria-label={t('monthNav')} className="flex items-stretch border">
@@ -83,7 +86,7 @@ export default async function FixturesPage({ params, searchParams }: Props) {
       {!matches ? (
         <DataNotice kind="fixtures" />
       ) : matches.length === 0 ? (
-        <p className="py-12 text-[17px] text-ink-2">{t('none', { league: league.name })}</p>
+        <p className="py-12 text-[17px] text-ink-2">{t('none', { league: name })}</p>
       ) : (
         <div className="max-w-[760px] pt-8">
           {groupMatchesByDate(matches).map((group) => (

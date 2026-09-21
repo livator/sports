@@ -5,6 +5,7 @@ import type {
   LeagueSlug,
   Match,
   MatchDetail,
+  NewsArticle,
   PlayerDetail,
   Scorer,
   Season,
@@ -28,10 +29,12 @@ import {
   type EspnRosterAthlete,
   type EspnSummary,
 } from './details';
+import { mapNewsItem, mergeNews, type EspnNewsFeed, type EspnNewsHeadlines } from './news';
 import {
   mapEvent,
   mapScorers,
   mapStandings,
+  mapStandingsGroups,
   mapTeam,
   seasonLabel,
   type EspnEvent,
@@ -41,13 +44,48 @@ import {
   type EspnTeam,
 } from './mappers';
 
+/** ESPN's competition codes. The Record type makes a missing competition a compile error. */
 const ESPN_CODES: Record<LeagueSlug, string> = {
+  'champions-league': 'uefa.champions',
+  'europa-league': 'uefa.europa',
+  'conference-league': 'uefa.europa.conf',
+  'nations-league': 'uefa.nations',
+  'euro-qualifying': 'uefa.euroq',
+  friendlies: 'fifa.friendly',
   'premier-league': 'eng.1',
   'la-liga': 'esp.1',
   'serie-a': 'ita.1',
   bundesliga: 'ger.1',
   'ligue-1': 'fra.1',
+  eredivisie: 'ned.1',
+  'primeira-liga': 'por.1',
+  'belgian-pro-league': 'bel.1',
+  'super-lig': 'tur.1',
+  'scottish-premiership': 'sco.1',
+  'super-league-greece': 'gre.1',
+  'austrian-bundesliga': 'aut.1',
+  'danish-superliga': 'den.1',
+  allsvenskan: 'swe.1',
+  eliteserien: 'nor.1',
+  'russian-premier-league': 'rus.1',
 };
+
+const TRAILING_SLASH = /\/$/;
+
+/** How long the list of European national teams is reused. */
+const EUROPE_TTL_MS = 6 * 60 * 60_000;
+
+/** Most competition feeds merged into one news list. */
+const MAX_NEWS_FEEDS = 6;
+/** Feeds behind an unfiltered news list: the biggest stage plus the top five leagues. */
+const DEFAULT_NEWS_FEEDS: readonly LeagueSlug[] = [
+  'champions-league',
+  'premier-league',
+  'la-liga',
+  'serie-a',
+  'bundesliga',
+  'ligue-1',
+];
 
 /** Upper bound on month requests for a single getMatches call. */
 const MAX_MONTHS = 12;
@@ -56,6 +94,8 @@ export interface EspnProviderOptions {
   baseUrl?: string;
   /** Host for the athlete endpoints, which live on a different ESPN service. */
   webBaseUrl?: string;
+  /** Host that serves a single news item by id. */
+  contentBaseUrl?: string;
   fetch?: typeof fetch;
   /**
    * Extra options for every request, e.g. Next.js `{ next: { revalidate: 30 } }`.
@@ -76,6 +116,7 @@ export class EspnProvider implements SportsDataProvider {
   readonly name = 'espn';
   private readonly baseUrl: string;
   private readonly webBaseUrl: string;
+  private readonly contentBaseUrl: string;
   private readonly fetchFn: typeof fetch;
   private readonly requestInit: (url: URL) => RequestInit;
   private readonly now: () => Date;
@@ -83,6 +124,10 @@ export class EspnProvider implements SportsDataProvider {
   constructor(options: EspnProviderOptions = {}) {
     this.baseUrl = (options.baseUrl ?? 'https://site.api.espn.com').replace(/\/$/, '');
     this.webBaseUrl = (options.webBaseUrl ?? 'https://site.web.api.espn.com').replace(/\/$/, '');
+    this.contentBaseUrl = (options.contentBaseUrl ?? 'https://content.core.api.espn.com').replace(
+      TRAILING_SLASH,
+      '',
+    );
     this.fetchFn = options.fetch ?? ((...args) => globalThis.fetch(...args));
     const init = options.requestInit ?? {};
     this.requestInit = typeof init === 'function' ? init : () => init;
@@ -113,11 +158,40 @@ export class EspnProvider implements SportsDataProvider {
     );
   }
 
+  private europeanTeams: { ids: Set<string>; at: number } | undefined;
+
+  /**
+   * Ids of the European national teams. ESPN's friendlies feed is worldwide, and the Nations
+   * League table is the one place that lists exactly the UEFA nations. Kept for six hours.
+   * Returns null when the table cannot be read, in which case nothing is filtered out.
+   */
+  private async europeanTeamIds(): Promise<Set<string> | null> {
+    const now = this.now().getTime();
+    if (this.europeanTeams && now - this.europeanTeams.at < EUROPE_TTL_MS) {
+      return this.europeanTeams.ids;
+    }
+    try {
+      const table = await this.request<EspnStandings>(
+        `/apis/v2/sports/soccer/${ESPN_CODES['nations-league']}/standings`,
+      );
+      const ids = new Set(mapStandings(table).map((row) => row.team.id));
+      if (ids.size === 0) return null;
+      this.europeanTeams = { ids, at: now };
+      return ids;
+    } catch {
+      return this.europeanTeams?.ids ?? null;
+    }
+  }
+
   private async matchesFor(slug: LeagueSlug, dates: string): Promise<Match[]> {
-    const data = await this.scoreboard(slug, dates);
+    const [data, europe] = await Promise.all([
+      this.scoreboard(slug, dates),
+      slug === 'friendlies' ? this.europeanTeamIds() : Promise.resolve(null),
+    ]);
     return (data.events ?? [])
       .map((e) => mapEvent(e, slug))
       .filter((m): m is Match => m !== null)
+      .filter((m) => !europe || europe.has(m.homeTeam.id) || europe.has(m.awayTeam.id))
       .sort((a, b) => a.kickoff.localeCompare(b.kickoff));
   }
 
@@ -134,12 +208,19 @@ export class EspnProvider implements SportsDataProvider {
       label: seasonLabel(season.year),
       startDate: season.startDate.slice(0, 10),
       endDate: season.endDate.slice(0, 10),
-      totalMatchdays: (league.teamCount - 1) * 2,
+      ...(league.teamCount ? { totalMatchdays: (league.teamCount - 1) * 2 } : {}),
     };
   }
 
   async getStandings(slug: LeagueSlug, options: StandingsOptions = {}): Promise<Standings> {
-    getLeague(slug);
+    if (!getLeague(slug).hasTable) {
+      return {
+        leagueSlug: slug,
+        season: seasonLabel(this.now().getUTCFullYear()),
+        updatedAt: this.now().toISOString(),
+        rows: [],
+      };
+    }
     const now = this.now();
     const thisMonth = toIsoDate(now).slice(0, 7);
     const lastMonth = toIsoDate(
@@ -157,12 +238,16 @@ export class EspnProvider implements SportsDataProvider {
     ]);
 
     const form = computeForm(recent);
-    const rows = mapStandings(data).map((row) => ({ ...row, form: form.get(row.team.id) ?? [] }));
+    const groups = mapStandingsGroups(data).map((group) => ({
+      name: group.name,
+      rows: group.rows.map((row) => ({ ...row, form: form.get(row.team.id) ?? [] })),
+    }));
     return {
       leagueSlug: slug,
       season: seasonLabel(data.season?.year ?? now.getUTCFullYear()),
       updatedAt: now.toISOString(),
-      rows,
+      rows: groups.flatMap((group) => group.rows),
+      ...(groups.length > 1 ? { groups } : {}),
     };
   }
 
@@ -190,7 +275,7 @@ export class EspnProvider implements SportsDataProvider {
   }
 
   async getTopScorers(slug: LeagueSlug, limit = 10): Promise<Scorer[]> {
-    getLeague(slug);
+    if (!getLeague(slug).hasScorers) return [];
     const data = await this.request<EspnStatistics>(
       `/apis/site/v2/sports/soccer/${ESPN_CODES[slug]}/statistics`,
     );
@@ -266,5 +351,41 @@ export class EspnProvider implements SportsDataProvider {
     const detail = mapPlayerDetail(profile, log, slug);
     if (!detail) throw new ProviderError(`ESPN has no player ${playerId} in ${slug}`, 404);
     return detail;
+  }
+
+  async getNews(leagues: readonly LeagueSlug[], limit = 8): Promise<NewsArticle[]> {
+    // One feed per competition. Cap the fan-out: a whole category can be a dozen leagues.
+    const slugs = leagues.length > 0 ? leagues.slice(0, MAX_NEWS_FEEDS) : DEFAULT_NEWS_FEEDS;
+    const lists = await Promise.all(
+      slugs.map((slug) =>
+        this.request<EspnNewsFeed>(`/apis/site/v2/sports/soccer/${ESPN_CODES[slug]}/news`, {
+          // Video clips are dropped after fetching, so ask for more than we need.
+          limit: Math.min(50, limit * 3),
+        })
+          .then((feed) =>
+            (feed.articles ?? [])
+              .map((item) => mapNewsItem(item, slugs.length === 1 ? slug : undefined) ?? null)
+              .filter((a): a is NewsArticle => a !== null)
+              // In a merged list, a story filed under several leagues keeps the feed it came from
+              // only when its own categories do not already name a competition.
+              .map((a) => (a.leagueSlug ? a : { ...a, leagueSlug: slug })),
+          )
+          // One dead feed must not blank the whole list.
+          .catch(() => [] as NewsArticle[]),
+      ),
+    );
+    return mergeNews(lists, limit);
+  }
+
+  async getArticle(articleId: string): Promise<NewsArticle> {
+    if (!/^\d{1,12}$/.test(articleId)) throw new ProviderError(`Invalid article id`, 404);
+    const data = await this.request<EspnNewsHeadlines>(
+      `/v1/sports/news/${articleId}`,
+      {},
+      this.contentBaseUrl,
+    );
+    const article = data.headlines?.[0] ? mapNewsItem(data.headlines[0]) : null;
+    if (!article) throw new ProviderError(`ESPN has no article ${articleId}`, 404);
+    return article;
   }
 }

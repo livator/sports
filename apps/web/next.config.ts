@@ -5,6 +5,9 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Lets a verification build run beside `next dev` without sharing (and wrecking) its .next:
+  //   NEXT_DIST_DIR=.next-verify npx next build
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   transpilePackages: ['@sports/core', '@sports/query', '@sports/i18n'],
   // Native bindings: load at runtime instead of bundling.
   serverExternalPackages: ['@libsql/client', 'libsql'],

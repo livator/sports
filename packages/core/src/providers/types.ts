@@ -3,6 +3,7 @@ import type {
   LeagueSlug,
   Match,
   MatchDetail,
+  NewsArticle,
   PlayerDetail,
   Scorer,
   Season,
@@ -48,6 +49,10 @@ export interface SportsDataProvider {
   getMatch?(league: LeagueSlug, matchId: string): Promise<MatchDetail>;
   getTeam?(league: LeagueSlug, teamId: string): Promise<TeamDetail>;
   getPlayer?(league: LeagueSlug, playerId: string): Promise<PlayerDetail>;
+
+  /** Latest headlines across the given competitions, newest first. */
+  getNews?(leagues: readonly LeagueSlug[], limit?: number): Promise<NewsArticle[]>;
+  getArticle?(articleId: string): Promise<NewsArticle>;
 }
 
 export class ProviderError extends Error {

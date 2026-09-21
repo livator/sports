@@ -117,3 +117,21 @@ export function usePlayer(slug: LeagueSlug, playerId: string) {
     staleTime: 5 * 60_000,
   });
 }
+
+export function useNews(leagues: readonly LeagueSlug[], limit = 8) {
+  const provider = useSportsData();
+  return useQuery({
+    queryKey: sportsKeys.news(leagues, limit),
+    queryFn: provider.getNews ? () => provider.getNews!(leagues, limit) : unsupported('news'),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useArticle(articleId: string) {
+  const provider = useSportsData();
+  return useQuery({
+    queryKey: sportsKeys.article(articleId),
+    queryFn: provider.getArticle ? () => provider.getArticle!(articleId) : unsupported('articles'),
+    staleTime: 10 * 60_000,
+  });
+}

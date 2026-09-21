@@ -3,17 +3,26 @@ import type { LeagueSlug } from './types';
 /** Longest comment the API accepts, counted in characters (not bytes). */
 export const COMMENT_MAX_LENGTH = 1000;
 
+/** Anything people can comment on. */
+export type CommentThread =
+  { type: 'match'; league: LeagueSlug; matchId: string } | { type: 'article'; articleId: string };
+
+/** A comment in any thread. The name predates article comments. */
 export interface MatchComment {
   id: string;
   body: string;
   /** ISO-8601 UTC timestamp */
   createdAt: string;
   author: { id: string; name: string };
+  /** Upvotes. */
+  votes: number;
+  /** Whether the signed-in viewer has upvoted it. Always false for guests. */
+  voted: boolean;
 }
 
 /** Machine-readable failure reasons, so every client can show its own translated message. */
 export type CommentErrorCode =
-  'unauthorized' | 'empty' | 'tooLong' | 'tooFast' | 'notFound' | 'generic';
+  'unauthorized' | 'empty' | 'tooLong' | 'tooFast' | 'notFound' | 'ownComment' | 'generic';
 
 export class CommentRequestError extends Error {
   constructor(
@@ -31,17 +40,25 @@ const KNOWN: readonly CommentErrorCode[] = [
   'tooLong',
   'tooFast',
   'notFound',
+  'ownComment',
 ];
 
 export interface CommentsClientOptions {
-  /** Base URL of the sports web app, e.g. https://sports.example.com */
+  /** Base URL of the sports web app, e.g. https://sports.example.com. Empty means same origin. */
   baseUrl: string;
   fetch?: typeof fetch;
 }
 
+/** Stable string for cache keys and local drafts. */
+export function threadKey(thread: CommentThread): string {
+  return thread.type === 'match'
+    ? `match.${thread.league}.${thread.matchId}`
+    : `article.${thread.articleId}`;
+}
+
 /**
- * Talks to the web app's comment routes. Reading is public. Posting and deleting rely on
- * the session cookie (web) or whatever auth headers the supplied `fetch` adds (mobile).
+ * Talks to the web app's comment routes. Reading is public. Posting, voting and deleting rely
+ * on the session cookie (web) or whatever auth headers the supplied `fetch` adds (mobile).
  */
 export class CommentsClient {
   private readonly baseUrl: string;
@@ -73,20 +90,27 @@ export class CommentsClient {
     return data;
   }
 
-  private path(league: LeagueSlug, matchId: string): string {
-    return `/leagues/${league}/matches/${encodeURIComponent(matchId)}/comments`;
+  private path(thread: CommentThread): string {
+    return thread.type === 'match'
+      ? `/leagues/${thread.league}/matches/${encodeURIComponent(thread.matchId)}/comments`
+      : `/news/${encodeURIComponent(thread.articleId)}/comments`;
   }
 
-  async list(league: LeagueSlug, matchId: string): Promise<MatchComment[]> {
-    return (await this.send<{ comments: MatchComment[] }>(this.path(league, matchId))).comments;
+  async list(thread: CommentThread): Promise<MatchComment[]> {
+    return (await this.send<{ comments: MatchComment[] }>(this.path(thread))).comments;
   }
 
-  async post(league: LeagueSlug, matchId: string, body: string): Promise<MatchComment> {
-    const data = await this.send<{ comment: MatchComment }>(this.path(league, matchId), {
+  async post(thread: CommentThread, body: string): Promise<MatchComment> {
+    const data = await this.send<{ comment: MatchComment }>(this.path(thread), {
       method: 'POST',
       body: JSON.stringify({ body }),
     });
     return data.comment;
+  }
+
+  /** Toggles the viewer's upvote and returns the new state. */
+  async vote(commentId: string): Promise<{ votes: number; voted: boolean }> {
+    return this.send(`/comments/${encodeURIComponent(commentId)}/vote`, { method: 'POST' });
   }
 
   async remove(commentId: string): Promise<void> {

@@ -38,7 +38,7 @@
     "yourClubs": "Echipele tale",
     "loading": "Se încarcă meciurile…",
     "feedDown": "Fluxul de scoruri nu răspunde acum. Pagina va reîncerca singură.",
-    "noMatchesAll": "Niciun meci în primele cinci campionate în această zi.",
+    "noMatchesAll": "Niciun meci în nicio competiție în această zi.",
     "noMatchesLeague": "Niciun meci în această competiție în această zi.",
     "tableTitle": "Clasament {league}",
     "fullTable": "Clasament complet",
@@ -46,7 +46,8 @@
     "topScorers": "Golgheteri",
     "allPlayers": "Toți jucătorii",
     "scorersUnavailable": "Golgheterii nu sunt disponibili acum.",
-    "noGoalsYet": "Încă nu s-a marcat niciun gol."
+    "noGoalsYet": "Încă nu s-a marcat niciun gol.",
+    "noMatchesGroup": "Niciun meci în aceste competiții în această zi."
   },
   "status": {
     "ft": "Final",
@@ -111,9 +112,16 @@
     "formDrew": "egal",
     "formLost": "înfrângere",
     "fixturesLink": "Program și rezultate",
-    "zoneChampions": "Liga Campionilor",
-    "zoneEurope": "Europa / Conference",
-    "zoneRelegation": "Retrogradare"
+    "zones": {
+      "champions-league": "Liga Campionilor",
+      "europa-league": "Europa League",
+      "conference-league": "Conference League",
+      "relegation-playoff": "Baraj de retrogradare",
+      "relegation": "Retrogradare",
+      "advance": "Se califică",
+      "playoff": "Baraj",
+      "eliminated": "Eliminată"
+    }
   },
   "fixtures": {
     "title": "{league}: program și rezultate",
@@ -198,7 +206,8 @@
     "match": "Meciul nu a putut fi încărcat acum. Sursa de date poate fi ocupată, încearcă din nou peste un minut.",
     "team": "Echipa nu a putut fi încărcată acum. Sursa de date poate fi ocupată, încearcă din nou peste un minut.",
     "player": "Jucătorul nu a putut fi încărcat acum. Sursa de date poate fi ocupată, încearcă din nou peste un minut.",
-    "unsupported": "Sursa de date configurată nu poate oferi această pagină."
+    "unsupported": "Sursa de date configurată nu poate oferi această pagină.",
+    "article": "Articolul nu a putut fi încărcat acum. Sursa de date poate fi ocupată, încearcă din nou peste un minut."
   },
   "errors": {
     "notFoundKicker": "Eroare 404",
@@ -270,8 +279,12 @@
       "tooLong": "Comentariile pot avea cel mult {max} caractere.",
       "tooFast": "Publici prea repede. Așteaptă puțin și încearcă din nou.",
       "unauthorized": "Autentifică-te pentru a comenta.",
-      "generic": "Comentariul nu a fost publicat. Încearcă din nou."
-    }
+      "generic": "Comentariul nu a fost publicat. Încearcă din nou.",
+      "ownComment": "Nu îți poți vota propriul comentariu."
+    },
+    "placeholderArticle": "Intră în discuție…",
+    "upvote": "Votează",
+    "removeUpvote": "Retrage votul"
   },
   "email": {
     "verifySubject": "Confirmă-ți emailul pentru Pitchside",
@@ -280,5 +293,52 @@
     "verifyButton": "Confirmă emailul",
     "verifyFallback": "Dacă butonul nu funcționează, deschide acest link:",
     "verifyIgnore": "Dacă nu ai creat un cont, poți ignora acest email."
+  },
+  "competitions": {
+    "categories": {
+      "uefa": "UEFA",
+      "national": "Echipe naționale",
+      "top5": "Top 5",
+      "more": "Alte campionate"
+    },
+    "categoryNav": "Grup de competiții",
+    "names": {
+      "champions-league": "Liga Campionilor",
+      "europa-league": "Europa League",
+      "conference-league": "Conference League",
+      "nations-league": "Liga Națiunilor",
+      "euro-qualifying": "Preliminarii EURO",
+      "friendlies": "Meciuri amicale"
+    },
+    "short": {
+      "champions-league": "UCL",
+      "europa-league": "UEL",
+      "conference-league": "UECL",
+      "nations-league": "Națiuni",
+      "euro-qualifying": "Prelim. EURO",
+      "friendlies": "Amicale"
+    },
+    "group": "Grupa {name}",
+    "noTable": "Această competiție nu are clasament.",
+    "emptyTable": "Clasamentul acestei competiții nu a început încă."
+  },
+  "news": {
+    "latest": "Ultimele știri",
+    "filterAll": "Toate",
+    "none": "Nicio știre acum.",
+    "unavailable": "Știrile nu sunt disponibile acum.",
+    "back": "Meciuri",
+    "football": "Fotbal",
+    "readFull": "Citește articolul complet pe {source}",
+    "sourceNote": "Titlu și rezumat de la {source}. Articolul complet este pe site-ul lor.",
+    "photoBy": "Foto: {credit}",
+    "fallbackTitle": "Știri",
+    "comments": "Comentarii ({count})"
+  },
+  "clubs": {
+    "title": "Echipele tale",
+    "hint": "Urmărește o echipă pentru a-i fixa meciurile aici.",
+    "signIn": "Autentificare",
+    "manage": "Gestionează echipele"
   }
 }

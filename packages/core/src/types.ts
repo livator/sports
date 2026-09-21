@@ -3,7 +3,54 @@
  * Keep this file free of framework imports.
  */
 
-export type LeagueSlug = 'premier-league' | 'la-liga' | 'serie-a' | 'bundesliga' | 'ligue-1';
+/**
+ * Every competition the app knows. The name "league" is historical: this also covers
+ * UEFA club competitions and national-team competitions.
+ */
+export type LeagueSlug =
+  // Top five domestic leagues
+  | 'premier-league'
+  | 'la-liga'
+  | 'serie-a'
+  | 'bundesliga'
+  | 'ligue-1'
+  // UEFA club competitions
+  | 'champions-league'
+  | 'europa-league'
+  | 'conference-league'
+  // National teams
+  | 'nations-league'
+  | 'euro-qualifying'
+  | 'friendlies'
+  // Other European domestic leagues
+  | 'eredivisie'
+  | 'primeira-liga'
+  | 'belgian-pro-league'
+  | 'super-lig'
+  | 'scottish-premiership'
+  | 'super-league-greece'
+  | 'austrian-bundesliga'
+  | 'danish-superliga'
+  | 'allsvenskan'
+  | 'eliteserien'
+  | 'russian-premier-league';
+
+/** How competitions are grouped in navigation. */
+export type CompetitionCategory = 'uefa' | 'national' | 'top5' | 'more';
+
+/**
+ * What finishing in a table position means. The first five are domestic-league outcomes;
+ * the last three cover league phases, groups and lower divisions.
+ */
+export type ZoneKind =
+  | 'champions-league'
+  | 'europa-league'
+  | 'conference-league'
+  | 'relegation-playoff'
+  | 'relegation'
+  | 'advance'
+  | 'playoff'
+  | 'eliminated';
 
 export interface LeagueZones {
   /** Number of positions that qualify for the Champions League. */
@@ -23,20 +70,26 @@ export interface League {
   name: string;
   /** Compact label for chips and tight columns, e.g. "PL". */
   shortName: string;
+  category: CompetitionCategory;
+  /** Country for domestic leagues, "Europe" for UEFA and national-team competitions. */
   country: string;
-  /** ISO 3166-1 alpha-2 */
+  /** ISO 3166-1 alpha-2, or "EU" for continental competitions. */
   countryCode: string;
-  /** League logo, when the data source publishes one. */
+  /** Logo, when the data source publishes one. */
   logoUrl?: string;
-  /** football-data.org competition code */
-  externalCode: string;
-  teamCount: number;
-  /** Brand colours for theming league pages. */
-  colors: {
-    primary: string;
-    secondary: string;
-  };
-  zones: LeagueZones;
+  /** False for competitions with no standings at all, such as friendlies. */
+  hasTable: boolean;
+  /** False where the data source publishes no scorer list. */
+  hasScorers: boolean;
+  /** football-data.org competition code, for the competitions its free tier covers. */
+  externalCode?: string;
+  /** Clubs in a single-table league. Absent for cups and grouped competitions. */
+  teamCount?: number;
+  /**
+   * Fallback qualification places by position, used only when a data source does not say
+   * what each table position means. ESPN does, so most competitions leave this out.
+   */
+  zones?: LeagueZones;
 }
 
 export interface Team {
@@ -67,13 +120,27 @@ export interface StandingRow {
   points: number;
   /** Most recent result last. */
   form: FormResult[];
+  /**
+   * What this position means, when the data source says so. `null` means "nothing special";
+   * `undefined` means the source does not know, and callers may fall back to `League.zones`.
+   */
+  zone?: ZoneKind | null;
+}
+
+export interface StandingsGroup {
+  /** e.g. "Group A1" */
+  name: string;
+  rows: StandingRow[];
 }
 
 export interface Standings {
   leagueSlug: LeagueSlug;
   season: string;
   updatedAt: string;
+  /** Every row. For grouped competitions this is all groups concatenated, positions per group. */
   rows: StandingRow[];
+  /** Present only when the competition is split into more than one table. */
+  groups?: StandingsGroup[];
 }
 
 export type MatchStatus = 'scheduled' | 'live' | 'paused' | 'finished' | 'postponed' | 'cancelled';
@@ -138,7 +205,8 @@ export interface Season {
   endDate: string;
   /** Not every source has a matchday concept. */
   currentMatchday?: number;
-  totalMatchdays: number;
+  /** Only meaningful for single-table leagues. */
+  totalMatchdays?: number;
 }
 
 /* ---------- Detail views (match, team, player) ---------- */
@@ -231,4 +299,27 @@ export interface PlayerDetail {
   leagueSlug: LeagueSlug;
   /** This season's appearances in date order. */
   log: PlayerMatchLog[];
+}
+
+/* ---------- News ---------- */
+
+/**
+ * A headline with its summary. The full text stays with the publisher: clients show this
+ * much and link to `sourceUrl`, they never republish the article body.
+ */
+export interface NewsArticle {
+  id: string;
+  title: string;
+  summary: string;
+  /** ISO-8601 UTC timestamp */
+  publishedAt: string;
+  /** Competition the story belongs to, when it maps onto one we know. */
+  leagueSlug?: LeagueSlug;
+  /** Publisher's own section label, used when `leagueSlug` is absent. */
+  tag?: string;
+  author?: string;
+  imageUrl?: string;
+  imageCredit?: string;
+  sourceName: string;
+  sourceUrl: string;
 }

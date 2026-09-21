@@ -1,4 +1,4 @@
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /*
  * The first four tables are owned by better-auth (email + password accounts, sessions,
@@ -70,13 +70,18 @@ export const verification = sqliteTable(
   (t) => [index('verification_identifier_idx').on(t.identifier)],
 );
 
-/** A comment on one match. Matches are identified by league + the data source's match id. */
+/**
+ * A comment in a thread. A thread is a match (`scope` = its competition slug, `threadId` = the
+ * data source's match id) or a news article (`scope` = "news", `threadId` = the article id).
+ * The column names date from when only matches had comments; renaming them would mean
+ * rebuilding the table for no gain, so only the TypeScript names moved on.
+ */
 export const comment = sqliteTable(
   'comment',
   {
     id: text('id').primaryKey(),
-    leagueSlug: text('league_slug').notNull(),
-    matchId: text('match_id').notNull(),
+    scope: text('league_slug').notNull(),
+    threadId: text('match_id').notNull(),
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
@@ -84,7 +89,22 @@ export const comment = sqliteTable(
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   },
   (t) => [
-    index('comment_match_idx').on(t.leagueSlug, t.matchId, t.createdAt),
+    index('comment_match_idx').on(t.scope, t.threadId, t.createdAt),
     index('comment_user_idx').on(t.userId, t.createdAt),
   ],
+);
+
+/** One upvote per user per comment. */
+export const commentVote = sqliteTable(
+  'comment_vote',
+  {
+    commentId: text('comment_id')
+      .notNull()
+      .references(() => comment.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.commentId, t.userId] })],
 );

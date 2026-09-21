@@ -12,11 +12,13 @@ import {
   type ReactNode,
 } from 'react';
 
-/** A club the viewer follows. Enough is stored to link to it without another request. */
+/** A club the viewer follows. Enough is stored to show and link to it without another request. */
 export interface FavouriteClub {
   id: string;
   name: string;
   league: LeagueSlug;
+  /** Absent for clubs followed before crests were stored. */
+  crestUrl?: string;
 }
 
 interface FavouritesValue {

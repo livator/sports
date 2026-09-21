@@ -1,9 +1,18 @@
 import { LEAGUES, getLeague } from '../../leagues';
 import { computeStandings } from '../../standings';
 import type { League, LeagueSlug, Match, Scorer, Season, Standings } from '../../types';
-import type { MatchQuery, SportsDataProvider } from '../types';
+import { ProviderError, type MatchQuery, type SportsDataProvider } from '../types';
 import { simulateScorers, simulateSeason, type SimulatedSeason } from './season';
-import { SEED_TEAMS } from './teams';
+import { SEED_TEAMS, type SeedTeam } from './teams';
+
+/** The competitions this provider can simulate. */
+const SEEDED = LEAGUES.filter((l) => SEED_TEAMS[l.slug]);
+
+function seedTeams(slug: LeagueSlug): readonly SeedTeam[] {
+  const teams = SEED_TEAMS[slug];
+  if (!teams) throw new ProviderError(`The demo provider does not simulate ${slug}`, 404);
+  return teams;
+}
 
 export interface MockProviderOptions {
   /** Clock used to decide which matches are finished/live. Defaults to `() => new Date()`. */
@@ -51,7 +60,7 @@ export class MockProvider implements SportsDataProvider {
       this.cache.clear();
       season = simulateSeason(
         slug,
-        SEED_TEAMS[slug],
+        seedTeams(slug),
         this.seasonStart ?? defaultSeasonStart(now),
         now,
       );
@@ -61,7 +70,7 @@ export class MockProvider implements SportsDataProvider {
   }
 
   getLeagues(): Promise<League[]> {
-    return this.delay([...LEAGUES]);
+    return this.delay([...SEEDED]);
   }
 
   getSeason(slug: LeagueSlug): Promise<Season> {
@@ -82,7 +91,7 @@ export class MockProvider implements SportsDataProvider {
   getStandings(slug: LeagueSlug): Promise<Standings> {
     getLeague(slug);
     const season = this.season(slug);
-    const teams = SEED_TEAMS[slug].map(({ strength: _s, ...team }) => team);
+    const teams = seedTeams(slug).map(({ strength: _s, ...team }) => team);
     return this.delay({
       leagueSlug: slug,
       season: season.label,
@@ -106,7 +115,7 @@ export class MockProvider implements SportsDataProvider {
 
   getTopScorers(slug: LeagueSlug, limit = 10): Promise<Scorer[]> {
     const { matches } = this.season(slug);
-    const scorers = simulateScorers(slug, SEED_TEAMS[slug], matches)
+    const scorers = simulateScorers(slug, seedTeams(slug), matches)
       .slice(0, limit)
       .map((s, i) => ({ rank: i + 1, ...s }));
     return this.delay(scorers);
@@ -114,7 +123,7 @@ export class MockProvider implements SportsDataProvider {
 
   async getMatchesByDate(date: string): Promise<Match[]> {
     const all = await Promise.all(
-      LEAGUES.map((l) => this.getMatches(l.slug, { dateFrom: date, dateTo: date })),
+      SEEDED.map((l) => this.getMatches(l.slug, { dateFrom: date, dateTo: date })),
     );
     return all.flat().sort((a, b) => a.kickoff.localeCompare(b.kickoff));
   }

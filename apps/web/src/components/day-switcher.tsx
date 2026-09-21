@@ -1,4 +1,4 @@
-import { shiftIsoDate, type LeagueSlug } from '@sports/core';
+import { shiftIsoDate } from '@sports/core';
 import { LOCALE_TAGS, type Locale } from '@sports/i18n';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
@@ -34,7 +34,8 @@ export function DaySwitcher({
 }: {
   date: string;
   today: string;
-  league: LeagueSlug | 'all';
+  /** Competition slug or category key to keep while changing day. */
+  league?: string | undefined;
 }) {
   const t = useTranslations('days');
   const locale = useLocale();

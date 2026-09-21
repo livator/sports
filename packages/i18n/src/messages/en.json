@@ -38,7 +38,7 @@
     "yourClubs": "Your clubs",
     "loading": "Loading matches…",
     "feedDown": "The scores feed is not responding right now. This page will retry on its own.",
-    "noMatchesAll": "No matches in the top five leagues on this day.",
+    "noMatchesAll": "No matches in any competition on this day.",
     "noMatchesLeague": "No matches in this competition on this day.",
     "tableTitle": "{league} table",
     "fullTable": "Full table",
@@ -46,7 +46,8 @@
     "topScorers": "Top scorers",
     "allPlayers": "All players",
     "scorersUnavailable": "Scorers unavailable right now.",
-    "noGoalsYet": "No goals recorded yet."
+    "noGoalsYet": "No goals recorded yet.",
+    "noMatchesGroup": "No matches in these competitions on this day."
   },
   "status": {
     "ft": "FT",
@@ -111,9 +112,16 @@
     "formDrew": "drew",
     "formLost": "lost",
     "fixturesLink": "Fixtures & results",
-    "zoneChampions": "Champions League",
-    "zoneEurope": "Europa / Conference",
-    "zoneRelegation": "Relegation"
+    "zones": {
+      "champions-league": "Champions League",
+      "europa-league": "Europa League",
+      "conference-league": "Conference League",
+      "relegation-playoff": "Relegation play-off",
+      "relegation": "Relegation",
+      "advance": "Advances",
+      "playoff": "Play-offs",
+      "eliminated": "Eliminated"
+    }
   },
   "fixtures": {
     "title": "{league} fixtures and results",
@@ -198,7 +206,8 @@
     "match": "Couldn’t load this match just now. The data source may be busy, so try again in a minute.",
     "team": "Couldn’t load this team just now. The data source may be busy, so try again in a minute.",
     "player": "Couldn’t load this player just now. The data source may be busy, so try again in a minute.",
-    "unsupported": "The configured data source cannot provide this page."
+    "unsupported": "The configured data source cannot provide this page.",
+    "article": "Couldn’t load this article just now. The data source may be busy, so try again in a minute."
   },
   "errors": {
     "notFoundKicker": "Error 404",
@@ -270,8 +279,12 @@
       "tooLong": "Comments can be up to {max} characters.",
       "tooFast": "You’re posting quickly. Wait a moment and try again.",
       "unauthorized": "Log in to post a comment.",
-      "generic": "Your comment wasn’t posted. Try again."
-    }
+      "generic": "Your comment wasn’t posted. Try again.",
+      "ownComment": "You can’t upvote your own comment."
+    },
+    "placeholderArticle": "Join the discussion…",
+    "upvote": "Upvote",
+    "removeUpvote": "Remove upvote"
   },
   "email": {
     "verifySubject": "Confirm your email for Pitchside",
@@ -280,5 +293,52 @@
     "verifyButton": "Confirm email",
     "verifyFallback": "If the button doesn’t work, open this link:",
     "verifyIgnore": "If you didn’t create an account, you can ignore this email."
+  },
+  "competitions": {
+    "categories": {
+      "uefa": "UEFA",
+      "national": "National teams",
+      "top5": "Top 5",
+      "more": "More leagues"
+    },
+    "categoryNav": "Competition group",
+    "names": {
+      "champions-league": "Champions League",
+      "europa-league": "Europa League",
+      "conference-league": "Conference League",
+      "nations-league": "Nations League",
+      "euro-qualifying": "Euro Qualifying",
+      "friendlies": "International Friendlies"
+    },
+    "short": {
+      "champions-league": "UCL",
+      "europa-league": "UEL",
+      "conference-league": "UECL",
+      "nations-league": "Nations",
+      "euro-qualifying": "Euro Q",
+      "friendlies": "Friendlies"
+    },
+    "group": "Group {name}",
+    "noTable": "This competition has no table.",
+    "emptyTable": "The table for this competition has not started yet."
+  },
+  "news": {
+    "latest": "Latest news",
+    "filterAll": "All",
+    "none": "No headlines right now.",
+    "unavailable": "News is unavailable right now.",
+    "back": "Matches",
+    "football": "Football",
+    "readFull": "Read the full story on {source}",
+    "sourceNote": "Headline and summary from {source}. The full article is on their site.",
+    "photoBy": "Photo: {credit}",
+    "fallbackTitle": "News",
+    "comments": "Comments ({count})"
+  },
+  "clubs": {
+    "title": "Your clubs",
+    "hint": "Follow a club to pin its matches here.",
+    "signIn": "Sign in",
+    "manage": "Manage clubs"
   }
 }

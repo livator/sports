@@ -14,6 +14,9 @@ let instance: SportsDataProvider | undefined;
 function espnRequestInit(url: URL): RequestInit {
   let revalidate = 120; // standings
   if (url.pathname.endsWith('/statistics')) revalidate = 900;
+  // Headlines move slowly, and a single article hardly changes once published.
+  if (url.pathname.endsWith('/news')) revalidate = 300;
+  if (url.pathname.includes('/sports/news/')) revalidate = 900;
   if (url.pathname.endsWith('/scoreboard')) {
     const dates = url.searchParams.get('dates') ?? '';
     // A single day (or "now") is a live scoreboard; a whole month is a fixture list.
