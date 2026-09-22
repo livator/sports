@@ -248,15 +248,17 @@ export default async function MatchPage({ params, searchParams }: Props) {
   };
 
   const side = (team: typeof match.homeTeam, align: 'start' | 'end') => (
-    <Link
-      href={teamHref(league.slug, team.id)}
-      className={`flex min-w-0 flex-col gap-3.5 hover:text-accent ${align === 'end' ? 'items-end text-right' : ''}`}
+    <div
+      className={`flex min-w-0 flex-col gap-3.5 ${align === 'end' ? 'items-end text-right' : 'items-start'}`}
     >
       <Crest team={team} size={56} />
-      <span className="text-[clamp(20px,3vw,32px)] leading-[1.05] font-extrabold tracking-[-0.02em]">
+      <Link
+        href={teamHref(league.slug, team.id)}
+        className="text-[clamp(20px,3vw,32px)] leading-[1.05] font-extrabold tracking-[-0.02em] hover:text-accent"
+      >
         {team.name}
-      </span>
-    </Link>
+      </Link>
+    </div>
   );
 
   return (

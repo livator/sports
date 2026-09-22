@@ -84,7 +84,13 @@ function create(): SportsDataProvider {
     case 'api-football': {
       const apiKey = env.apiFootballKey;
       if (!apiKey) throw new Error('SPORTS_DATA_PROVIDER=api-football needs API_FOOTBALL_KEY');
-      return new ApiFootballProvider({ apiKey, requestInit: apiFootballRequestInit });
+      // api-football has no news of its own (it is a stats API), so ESPN rides along for
+      // getNews/getArticle only: api-football is listed first and covers every league, so it
+      // wins scores and standings everywhere: ESPN's own scores are never actually used.
+      return new CompositeProvider([
+        new ApiFootballProvider({ apiKey, requestInit: apiFootballRequestInit }),
+        new EspnProvider({ requestInit: espnRequestInit }),
+      ]);
     }
     default:
       // ESPN for everything it covers; TheSportsDB for Romania, Moldova and Ukraine.

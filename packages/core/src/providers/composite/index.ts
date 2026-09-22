@@ -138,14 +138,17 @@ export class CompositeProvider implements SportsDataProvider {
   }
 
   async getNews(leagues: readonly LeagueSlug[], limit = 8): Promise<NewsArticle[]> {
-    const routes = await this.routing();
     const lists = await Promise.all(
       this.providers
         .filter((p) => p.getNews)
-        .map((p) => {
-          const mine = leagues.filter((slug) => routes.get(slug) === p);
+        .map(async (p) => {
+          // Whether a source may speak for a league is its own coverage, not who the composite
+          // currently routes scores to: a source with no news of its own (a stats-only API,
+          // say) must not lock a different source out of a league it happens to also cover.
+          const covered = new Set((await p.getLeagues()).map((l) => l.slug));
+          const mine = leagues.filter((slug) => covered.has(slug));
           // No filter means "the general mix": every source with news contributes. With a
-          // filter, a source is only asked about leagues that are its own.
+          // filter, a source is only asked about leagues it covers.
           if (leagues.length > 0 && mine.length === 0) return [] as NewsArticle[];
           return p.getNews!(mine, limit).catch(() => [] as NewsArticle[]);
         }),
