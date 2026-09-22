@@ -78,8 +78,7 @@ export interface ApiFootballProviderOptions {
 
 /**
  * Adapter for https://www.api-football.com (v3, "API-Sports" host). A paid key covers every
- * competition this app knows, including the ones ESPN and TheSportsDB do not (Russia) or serve
- * thinly (Romania, Moldova, Ukraine have no scorer lists there).
+ * competition this app knows, including scorer lists for Romania, Moldova and Ukraine.
  *
  * The source has no numeric matchday: single-table leagues use rounds named "Regular Season -
  * N", which `getMatches`'s `matchday` reconstructs directly since that is the source's own

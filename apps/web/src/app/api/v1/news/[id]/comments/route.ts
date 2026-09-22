@@ -23,7 +23,8 @@ export async function POST(req: Request, { params }: Ctx) {
   if (!thread) return error('Invalid article id', 400);
   // Our own articles must be live, and the editor may have closed the thread.
   if (isOwnArticleId(thread.articleId)) {
-    const article = await getLiveArticle(thread.articleId);
+    // Only `commentsOpen` matters here; the language of the text is irrelevant.
+    const article = await getLiveArticle(thread.articleId, 'en');
     if (!article) return error('No such article', 404);
     if (article.commentsOpen === false) {
       return NextResponse.json({ error: 'closed' }, { status: 403 });

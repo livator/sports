@@ -129,8 +129,7 @@ export function mapTimeline(events: AfEvent[] | undefined, homeId: number): Time
 
 /* ---------- Statistics ---------- */
 
-/** api-football's stat name -> our stat key/label. Keys match the ones ESPN uses, so
- * translations (`statLabels.*`) apply the same way regardless of provider. */
+/** api-football's stat name -> our stat key/label, matching the `statLabels.*` translations. */
 const STAT_LABELS: ReadonlyArray<[apiType: string, key: string, label: string, unit?: '%']> = [
   ['Ball Possession', 'possessionPct', 'Possession', '%'],
   ['Total Shots', 'totalShots', 'Shots'],

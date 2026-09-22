@@ -2,17 +2,13 @@ import 'server-only';
 
 import {
   ApiFootballProvider,
-  CompositeProvider,
-  EspnProvider,
   FootballDataProvider,
   MockProvider,
   ProviderError,
-  TheSportsDbProvider,
   type SportsDataProvider,
 } from '@sports/core';
 import { notFound } from 'next/navigation';
 import { env } from './env';
-import { tsdbFileStore } from './tsdb-store';
 
 let instance: SportsDataProvider | undefined;
 
@@ -24,23 +20,6 @@ function scoreboardLifetime(dates: string): number {
   // Yesterday through tomorrow, whatever the viewer's timezone: results and kick-offs move.
   if (daysFromNow > -2.5 && daysFromNow < 2) return 30;
   return daysFromNow < 0 ? 6 * 60 * 60 : 15 * 60;
-}
-
-/** Next.js data-cache lifetimes per ESPN endpoint, in seconds. */
-function espnRequestInit(url: URL): RequestInit {
-  let revalidate = 120; // standings
-  if (url.pathname.endsWith('/statistics')) revalidate = 900;
-  // Headlines move slowly, and a single article hardly changes once published.
-  if (url.pathname.endsWith('/news')) revalidate = 300;
-  if (url.pathname.includes('/sports/news/')) revalidate = 900;
-  if (url.pathname.endsWith('/scoreboard')) {
-    const dates = url.searchParams.get('dates') ?? '';
-    // A whole month is a fixture list. A single day is a live scoreboard only around today:
-    // a day that is over hardly changes, and fixtures days away change rarely. Keeping those
-    // longer is most of what makes flipping through days quick.
-    revalidate = dates.length === 6 ? 300 : scoreboardLifetime(dates);
-  }
-  return { next: { revalidate } } as RequestInit;
 }
 
 /** Next.js data-cache lifetimes per api-football endpoint, in seconds. */
@@ -81,33 +60,12 @@ function create(): SportsDataProvider {
         requestInit: { next: { revalidate: 60 } } as RequestInit,
       });
     }
-    case 'api-football': {
+    case 'api-football':
+    default: {
       const apiKey = env.apiFootballKey;
       if (!apiKey) throw new Error('SPORTS_DATA_PROVIDER=api-football needs API_FOOTBALL_KEY');
-      // api-football has no news of its own (it is a stats API), so ESPN rides along for
-      // getNews/getArticle only: api-football is listed first and covers every league, so it
-      // wins scores and standings everywhere: ESPN's own scores are never actually used.
-      return new CompositeProvider([
-        new ApiFootballProvider({ apiKey, requestInit: apiFootballRequestInit }),
-        new EspnProvider({ requestInit: espnRequestInit }),
-      ]);
+      return new ApiFootballProvider({ apiKey, requestInit: apiFootballRequestInit });
     }
-    default:
-      // ESPN for everything it covers; TheSportsDB for Romania, Moldova and Ukraine.
-      return new CompositeProvider([
-        new EspnProvider({ requestInit: espnRequestInit }),
-        new TheSportsDbProvider({
-          ...(env.theSportsDbApiKey ? { apiKey: env.theSportsDbApiKey } : {}),
-          /*
-           * Not through the Next.js data cache, unlike ESPN. That cache refreshes stale entries
-           * on its own, outside this provider's request budget (the free key allows about 30 a
-           * minute), and route handlers wait for those refreshes before answering. The provider
-           * keeps its own answers instead, on disk, and refreshes them within the budget.
-           */
-          requestInit: () => ({ cache: 'no-store' }),
-          store: tsdbFileStore,
-        }),
-      ]);
   }
 }
 
@@ -120,10 +78,9 @@ export function getProvider(): SportsDataProvider {
   return instance;
 }
 
-/** Every source behind the provider, for crediting them in the footer. */
+/** The source behind the provider, for crediting it in the footer. */
 export function dataSources(): readonly string[] {
-  const provider = getProvider();
-  return provider instanceof CompositeProvider ? provider.sources : [provider.name];
+  return [getProvider().name];
 }
 
 export function isDemoData(): boolean {

@@ -16,11 +16,10 @@
   },
   "footer": {
     "tagline": "Pitchside — live scores, tables and players for Europe’s top leagues.",
-    "sourceEspn": "Data and crests via ESPN",
+    "sourceApiFootball": "Data and crests via API-Football",
     "sourceFootballData": "Data and crests via football-data.org",
     "sourceMock": "Demo data",
-    "localTimes": "times in your local time",
-    "sourceEspnTsdb": "Data and crests via ESPN and TheSportsDB"
+    "localTimes": "times in your local time"
   },
   "days": {
     "today": "Today",
@@ -370,7 +369,8 @@
     "fallbackTitle": "News",
     "comments": "Comments ({count})",
     "commentsClosed": "Comments are closed for this article.",
-    "by": "By {author}"
+    "by": "By {author}",
+    "seeMore": "See more news"
   },
   "clubs": {
     "title": "Your clubs",

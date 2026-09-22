@@ -8,28 +8,34 @@ const standardZones = {
   relegationPlayoff: 0,
 } as const;
 
-const logo = (id: number) => `https://a.espncdn.com/i/leaguelogos/soccer/500/${id}.png`;
+/** api-football.com publishes a badge for every league it covers, keyed by its own id. */
+const logo = (apiFootballId: number) =>
+  `https://media.api-sports.io/football/leagues/${apiFootballId}.png`;
 
 type Domestic = Pick<League, 'slug' | 'name' | 'shortName' | 'country' | 'countryCode'> &
-  Partial<
-    Pick<
-      League,
-      'logoUrl' | 'externalCode' | 'apiFootballId' | 'teamCount' | 'zones' | 'hasScorers'
-    >
-  >;
+  Partial<Pick<League, 'externalCode' | 'teamCount' | 'zones' | 'hasScorers'>> & {
+    apiFootballId: number;
+  };
 
 const domestic = (category: 'top5' | 'more', l: Domestic): League => ({
   category,
   hasTable: true,
   hasScorers: true,
+  logoUrl: logo(l.apiFootballId),
   ...l,
 });
 
 const continental = (
   category: 'uefa' | 'national',
   l: Pick<League, 'slug' | 'name' | 'shortName' | 'hasTable' | 'hasScorers'> &
-    Partial<Pick<League, 'logoUrl' | 'externalCode' | 'apiFootballId'>>,
-): League => ({ category, country: 'Europe', countryCode: 'EU', ...l });
+    Partial<Pick<League, 'externalCode'>> & { apiFootballId: number },
+): League => ({
+  category,
+  country: 'Europe',
+  countryCode: 'EU',
+  logoUrl: logo(l.apiFootballId),
+  ...l,
+});
 
 /** Order of categories wherever competitions are listed: the biggest stage first. */
 export const CATEGORY_ORDER: readonly CompetitionCategory[] = ['uefa', 'national', 'top5', 'more'];
@@ -43,7 +49,6 @@ export const LEAGUES: readonly League[] = [
     slug: 'champions-league',
     name: 'Champions League',
     shortName: 'UCL',
-    logoUrl: logo(2),
     externalCode: 'CL',
     apiFootballId: 2,
     hasTable: true,
@@ -53,7 +58,6 @@ export const LEAGUES: readonly League[] = [
     slug: 'europa-league',
     name: 'Europa League',
     shortName: 'UEL',
-    logoUrl: logo(2310),
     apiFootballId: 3,
     hasTable: true,
     hasScorers: true,
@@ -62,7 +66,6 @@ export const LEAGUES: readonly League[] = [
     slug: 'conference-league',
     name: 'Conference League',
     shortName: 'UECL',
-    logoUrl: logo(20296),
     apiFootballId: 848,
     hasTable: true,
     hasScorers: true,
@@ -72,7 +75,6 @@ export const LEAGUES: readonly League[] = [
     slug: 'nations-league',
     name: 'Nations League',
     shortName: 'Nations',
-    logoUrl: logo(2395),
     apiFootballId: 5,
     hasTable: true,
     hasScorers: false,
@@ -81,7 +83,6 @@ export const LEAGUES: readonly League[] = [
     slug: 'euro-qualifying',
     name: 'Euro Qualifying',
     shortName: 'Euro Q',
-    logoUrl: logo(56),
     apiFootballId: 960,
     hasTable: true,
     hasScorers: false,
@@ -90,7 +91,6 @@ export const LEAGUES: readonly League[] = [
     slug: 'friendlies',
     name: 'International Friendlies',
     shortName: 'Friendlies',
-    logoUrl: logo(53),
     apiFootballId: 10,
     hasTable: false,
     hasScorers: false,
@@ -102,7 +102,6 @@ export const LEAGUES: readonly League[] = [
     shortName: 'PL',
     country: 'England',
     countryCode: 'GB',
-    logoUrl: logo(23),
     externalCode: 'PL',
     apiFootballId: 39,
     teamCount: 20,
@@ -114,7 +113,6 @@ export const LEAGUES: readonly League[] = [
     shortName: 'LaLiga',
     country: 'Spain',
     countryCode: 'ES',
-    logoUrl: logo(15),
     externalCode: 'PD',
     apiFootballId: 140,
     teamCount: 20,
@@ -126,7 +124,6 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Serie A',
     country: 'Italy',
     countryCode: 'IT',
-    logoUrl: logo(12),
     externalCode: 'SA',
     apiFootballId: 135,
     teamCount: 20,
@@ -138,7 +135,6 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Bundesliga',
     country: 'Germany',
     countryCode: 'DE',
-    logoUrl: logo(10),
     externalCode: 'BL1',
     apiFootballId: 78,
     teamCount: 18,
@@ -150,7 +146,6 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Ligue 1',
     country: 'France',
     countryCode: 'FR',
-    logoUrl: logo(9),
     externalCode: 'FL1',
     apiFootballId: 61,
     teamCount: 18,
@@ -158,9 +153,8 @@ export const LEAGUES: readonly League[] = [
   }),
 
   /*
-   * ESPN has no current data for these three, so they come from TheSportsDB (see
-   * providers/thesportsdb). That source publishes no scorer lists, and says nothing about
-   * what a table position means, so there are no zone markers either.
+   * No zone markers configured for these three: none has a clear, stable rule for what a
+   * table position means, so a position's meaning is left to the data source alone.
    */
   domestic('more', {
     slug: 'romanian-superliga',
@@ -198,7 +192,6 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Eredivisie',
     country: 'Netherlands',
     countryCode: 'NL',
-    logoUrl: logo(11),
     externalCode: 'DED',
     apiFootballId: 88,
     teamCount: 18,
@@ -209,7 +202,6 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Primeira',
     country: 'Portugal',
     countryCode: 'PT',
-    logoUrl: logo(14),
     externalCode: 'PPL',
     apiFootballId: 94,
     teamCount: 18,
@@ -220,7 +212,6 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Pro League',
     country: 'Belgium',
     countryCode: 'BE',
-    logoUrl: logo(6),
     apiFootballId: 144,
     teamCount: 18,
   }),
@@ -230,7 +221,6 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Süper Lig',
     country: 'Turkey',
     countryCode: 'TR',
-    logoUrl: logo(18),
     apiFootballId: 203,
     teamCount: 18,
   }),
@@ -240,7 +230,6 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Scotland',
     country: 'Scotland',
     countryCode: 'GB',
-    logoUrl: logo(45),
     apiFootballId: 179,
     teamCount: 12,
   }),
@@ -250,7 +239,6 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Greece',
     country: 'Greece',
     countryCode: 'GR',
-    logoUrl: logo(98),
     apiFootballId: 197,
     teamCount: 14,
   }),
@@ -260,7 +248,6 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Austria',
     country: 'Austria',
     countryCode: 'AT',
-    logoUrl: logo(5),
     apiFootballId: 218,
     teamCount: 12,
   }),
@@ -279,7 +266,6 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Sweden',
     country: 'Sweden',
     countryCode: 'SE',
-    logoUrl: logo(16),
     apiFootballId: 113,
     teamCount: 16,
   }),
@@ -298,7 +284,6 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Russia',
     country: 'Russia',
     countryCode: 'RU',
-    logoUrl: logo(106),
     apiFootballId: 235,
     teamCount: 16,
   }),

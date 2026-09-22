@@ -118,8 +118,10 @@ export const commentVote = sqliteTable(
 );
 
 /**
- * News written by our own staff in the admin console. Unlike headlines from the data
- * source, these have a body, because the text is ours to publish.
+ * News written by our own staff in the admin console, in all three site languages at once.
+ * Title, summary and body are per language; everything else (photo, byline, tag) is the same
+ * story regardless of language, so it is shared. `ru`/`ro` may be blank while a translation is
+ * still being written: the public site falls back to the English text until they are filled in.
  *
  * There is no "scheduled" status: an article is scheduled when it is published with a
  * `publishedAt` in the future, so going live needs no background job.
@@ -135,11 +137,17 @@ export const article = sqliteTable(
     /** Competition slug, or null for a general story shown under every filter. */
     leagueSlug: text('league_slug'),
     tag: text('tag').notNull().default(''),
-    title: text('title').notNull(),
-    summary: text('summary').notNull().default(''),
+    titleEn: text('title_en').notNull().default(''),
+    titleRu: text('title_ru').notNull().default(''),
+    titleRo: text('title_ro').notNull().default(''),
+    summaryEn: text('summary_en').notNull().default(''),
+    summaryRu: text('summary_ru').notNull().default(''),
+    summaryRo: text('summary_ro').notNull().default(''),
     /** Plain text; a blank line separates paragraphs. */
-    body: text('body').notNull().default(''),
-    /** Byline as printed. Not necessarily the account that saved it. */
+    bodyEn: text('body_en').notNull().default(''),
+    bodyRu: text('body_ru').notNull().default(''),
+    bodyRo: text('body_ro').notNull().default(''),
+    /** Byline as printed. Not necessarily the account that saved it. Same in every language. */
     author: text('author').notNull().default(''),
     imageUrl: text('image_url'),
     caption: text('caption').notNull().default(''),

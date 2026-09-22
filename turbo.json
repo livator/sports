@@ -4,6 +4,7 @@
   "globalEnv": [
     "SPORTS_DATA_PROVIDER",
     "FOOTBALL_DATA_API_KEY",
+    "API_FOOTBALL_KEY",
     "NEXT_PUBLIC_APP_URL",
     "BETTER_AUTH_SECRET",
     "BETTER_AUTH_URL",
@@ -20,8 +21,6 @@
     "ADMIN_EMAIL",
     "ADMIN_PASSWORD",
     "UPLOADS_DIR",
-    "THESPORTSDB_API_KEY",
-    "TSDB_CACHE_DIR",
     "CLIENT_IP_HEADER"
   ],
   "tasks": {

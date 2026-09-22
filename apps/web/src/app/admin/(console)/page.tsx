@@ -5,7 +5,7 @@ import { sectionLabel, STATE_LABEL, STATE_TAG } from '@/components/admin/shared'
 import { requireAdmin } from '@/lib/admin';
 import { getOverview, listUsersForAdmin } from '@/lib/admin-data';
 import { initialsOf } from '@/lib/admin-format';
-import { listArticlesForAdmin } from '@/lib/articles';
+import { adminTitle, listArticlesForAdmin } from '@/lib/articles';
 
 export const metadata: Metadata = { title: 'Overview' };
 
@@ -77,7 +77,7 @@ export default async function OverviewPage() {
                 <span className="mb-1 block text-[11px] font-semibold tracking-[0.08em] text-accent-700 uppercase">
                   {sectionLabel(a.leagueSlug, a.tag)}
                 </span>
-                <span className="block truncate text-[15px] font-semibold">{a.title}</span>
+                <span className="block truncate text-[15px] font-semibold">{adminTitle(a)}</span>
               </span>
               <span className="tnum text-[13px] text-ink-3">{number(a.views)} views</span>
               <span className={`tag ${STATE_TAG[a.state]}`}>{STATE_LABEL[a.state]}</span>

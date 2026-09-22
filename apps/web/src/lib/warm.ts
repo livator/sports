@@ -12,14 +12,15 @@ const warmedAt = new Map<string, number>();
 
 /**
  * Fills the data cache for competitions the visitor is likely to pick next, so the click
- * finds the table, scorers and headlines already there. The first request for a competition
- * costs a second or more at the data source; once cached, Next.js serves it at once and
- * refreshes it in the background.
+ * finds the table and scorers already there. The first request for a competition costs a
+ * second or more at the data source; once cached, Next.js serves it at once and refreshes it
+ * in the background. News is not warmed here: the home page's news list is the same general
+ * mix regardless of which competition is selected, so there is nothing per-league to warm.
  *
  * Runs after the response has been sent (see `after()` in the home page), never in its way.
  * Each competition is warmed at most once per ten minutes per server process.
  */
-export async function warmCompetitions(leagues: readonly League[], newsCount: number) {
+export async function warmCompetitions(leagues: readonly League[]) {
   const now = Date.now();
   const due = leagues.filter((l) => now - (warmedAt.get(l.slug) ?? 0) > WARM_FOR_MS);
   for (const league of due) warmedAt.set(league.slug, now);
@@ -32,7 +33,6 @@ export async function warmCompetitions(leagues: readonly League[], newsCount: nu
       await Promise.allSettled([
         hasTable ? provider.getStandings(slug, { includeForm: false }) : null,
         hasScorers ? provider.getTopScorers(slug, 5) : null,
-        provider.getNews ? provider.getNews([slug], newsCount) : null,
       ]);
     }
   };

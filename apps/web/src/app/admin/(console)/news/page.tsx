@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { NewsTable } from '@/components/admin/news-table';
 import { sectionLabel, type ArticleListItem } from '@/components/admin/shared';
 import { requireAdmin } from '@/lib/admin';
-import { listArticlesForAdmin } from '@/lib/articles';
+import { adminTitle, listArticlesForAdmin } from '@/lib/articles';
 
 export const metadata: Metadata = { title: 'News' };
 
@@ -12,7 +12,7 @@ export default async function AdminNewsPage() {
   const articles = await listArticlesForAdmin();
   const items = articles.map((a): ArticleListItem => ({
     id: a.id,
-    title: a.title,
+    title: adminTitle(a),
     section: sectionLabel(a.leagueSlug, a.tag),
     author: a.author,
     updatedAt: a.updatedAt.toISOString(),

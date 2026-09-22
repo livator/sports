@@ -16,11 +16,10 @@
   },
   "footer": {
     "tagline": "Pitchside — scoruri live, clasamente și jucători din marile campionate ale Europei.",
-    "sourceEspn": "Date și sigle de la ESPN",
+    "sourceApiFootball": "Date și sigle de la API-Football",
     "sourceFootballData": "Date și sigle de la football-data.org",
     "sourceMock": "Date demonstrative",
-    "localTimes": "orele sunt în fusul tău orar",
-    "sourceEspnTsdb": "Date și sigle de la ESPN și TheSportsDB"
+    "localTimes": "orele sunt în fusul tău orar"
   },
   "days": {
     "today": "Azi",
@@ -370,7 +369,8 @@
     "fallbackTitle": "Știri",
     "comments": "Comentarii ({count})",
     "commentsClosed": "Comentariile sunt închise pentru acest articol.",
-    "by": "De {author}"
+    "by": "De {author}",
+    "seeMore": "Mai multe știri"
   },
   "clubs": {
     "title": "Echipele tale",

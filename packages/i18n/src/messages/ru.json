@@ -16,11 +16,10 @@
   },
   "footer": {
     "tagline": "Pitchside — счёт в прямом эфире, таблицы и игроки ведущих лиг Европы.",
-    "sourceEspn": "Данные и эмблемы: ESPN",
+    "sourceApiFootball": "Данные и эмблемы: API-Football",
     "sourceFootballData": "Данные и эмблемы: football-data.org",
     "sourceMock": "Демонстрационные данные",
-    "localTimes": "время указано по вашему часовому поясу",
-    "sourceEspnTsdb": "Данные и эмблемы: ESPN и TheSportsDB"
+    "localTimes": "время указано по вашему часовому поясу"
   },
   "days": {
     "today": "Сегодня",
@@ -370,7 +369,8 @@
     "fallbackTitle": "Новости",
     "comments": "Комментарии ({count})",
     "commentsClosed": "Комментарии к этой статье закрыты.",
-    "by": "Автор: {author}"
+    "by": "Автор: {author}",
+    "seeMore": "Ещё новости"
   },
   "clubs": {
     "title": "Ваши клубы",

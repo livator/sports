@@ -64,9 +64,8 @@ when the configured source cannot serve them.
 
 | Provider               | Data                                                                                                | Details | Key |
 | ---------------------- | --------------------------------------------------------------------------------------------------- | ------- | --- |
-| `EspnProvider`         | Real. Scores, live clocks, goalscorers, cards, tables, crests.                                      | Yes     | No  |
+| `ApiFootballProvider`  | Real. [api-football.com](https://www.api-football.com) v3. Covers every competition this app knows. | Yes     | Yes |
 | `FootballDataProvider` | Real. [football-data.org](https://www.football-data.org) v4.                                        | No      | Yes |
-| `ApiFootballProvider`  | Real. [api-football.com](https://www.api-football.com) v3. Covers every competition this app knows. | No      | Yes |
 | `MockProvider`         | Simulated, deterministic season. For offline work and tests only.                                   | No      | No  |
 | `HttpProvider`         | Whatever the web app serves at `/api/v1`. This is what mobile uses.                                 | Yes     | No  |
 
@@ -83,24 +82,21 @@ so a Champions League night leads the scoreboard with no special casing.
 | `more`     | SuperLiga România, Super Liga Moldova, Ukrainian Premier League, Eredivisie, Primeira Liga, Belgian Pro League, Süper Lig, Scottish Premiership, Super League Greece, Austrian Bundesliga, Danish Superliga, Allsvenskan, Eliteserien, Russian Premier League |
 
 - Everything is configured in `packages/core/src/leagues.ts`. To add a competition: add its slug
-  to `LeagueSlug`, an entry to `LEAGUES`, and its code to the provider that has it (`ESPN_CODES`,
-  or `TSDB_LEAGUES` in the TheSportsDB provider).
+  to `LeagueSlug`, an entry to `LEAGUES`, and its api-football league id (`apiFootballId`).
   UEFA and national-team names are translated in
   `@sports/i18n` (`competitions.names`); domestic league names are proper nouns and are not.
 - Pickers are two-level (category, then competition) so they fit a phone. `?league=` accepts a
   category key (`uefa`) or a competition slug (`champions-league`).
-- **Zones come from the data.** ESPN says what each table position means, and
-  `zoneFromNote` turns that into a `ZoneKind`, so nobody maintains European places per league.
-  `League.zones` is only a fallback for sources that do not say.
+- **Zones fall back to configured data.** `League.zones` gives qualification and relegation
+  places by position for the top five leagues, used when a source does not say what a position
+  means. api-football does not currently map its own position descriptions to a `ZoneKind`.
 - **Grouped tables.** `Standings.groups` is present when a competition has several tables
   (Nations League has 14). `Standings.rows` always holds every row for lookups.
 - `hasTable` and `hasScorers` switch screens off where there is nothing to show: friendlies
   have no table, and national-team competitions publish no scorer list.
-- Providers report what they cover through `getLeagues()`, and `CompositeProvider` sends each
-  league to the first source that lists it. ESPN covers 22 competitions and is the main source;
-  TheSportsDB covers Romania, Moldova and Ukraine, where ESPN has no current data (its Romanian
-  feed stops in September 2025, and it has neither of the other two). football-data.org covers
-  the ones with an `externalCode`, the demo provider the top five.
+- Providers report what they cover through `getLeagues()`. api-football covers every
+  competition this app knows; football-data.org covers the ones with an `externalCode`, the
+  demo provider the top five.
 - The Swiss Super League is not included: no source in use has a current season for it.
 
 ## Getting started
@@ -112,9 +108,8 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-Nothing else is needed locally:
-
-- **Sports data** is real, from ESPN, with no key.
+- **Sports data** comes from [api-football.com](https://www.api-football.com) and needs a key
+  (`API_FOOTBALL_KEY`); a request fails without one. Everything else needs nothing further:
 - **The database** is a SQLite file at `apps/web/data/pitchside.db`. It is created and migrated
   automatically the first time an account or comment route is used.
 - **Verification emails** are written to `apps/web/data/outbox/` when no SMTP server is
@@ -130,8 +125,8 @@ Picking a competition should feel instant, and it is built in four layers:
 
 - **The click is answered in the browser.** The scoreboard already holds every match of the
   day, so the picker and the match list follow the click at once (`PendingNavProvider`,
-  `TwoLevelChips`, `useHeadingFilter`). Only the table, scorers and news wait for the server,
-  dimmed meanwhile.
+  `TwoLevelChips`, `useHeadingFilter`). Only the table and scorers wait for the server, dimmed
+  meanwhile; the news list is the same general mix regardless of the filter, so it never waits.
 - **No waterfall.** The home page asks for matches, news, table and scorers at the same time.
   A competition nobody has opened yet used to cost two trips to the data source in a row.
 - **Warm-up after the response.** `after()` runs `warmCompetitions` for the competitions one
@@ -140,10 +135,9 @@ Picking a competition should feel instant, and it is built in four layers:
 - **Days work the same way.** The day switcher and the date heading follow the click at once.
   The scoreboard preloads the matches of the days the switcher offers (`usePrefetchMatchesByDate`),
   so a clicked day usually shows its matches from the browser's cache; otherwise the current list
-  stays up, dimmed, until the new one arrives. On the server, a single day's ESPN scoreboard is
+  stays up, dimmed, until the new one arrives. On the server, a single day's scoreboard is
   cached for 30 seconds only from yesterday to tomorrow; a finished day keeps for six hours and a
-  day further ahead for fifteen minutes. The scoreboard waits at most 1.2 seconds for the second
-  data source.
+  day further ahead for fifteen minutes.
 - **No link prefetching** (`@/i18n/navigation`). Pages are rendered per request, so a prefetch
   brings back nothing reusable, and dozens of them per view queue ahead of the real click.
 
@@ -158,20 +152,17 @@ expect roughly 0.4s there.
 
 ## News
 
-The scoreboard's left sidebar lists the latest headlines and follows the competition picker.
-Each headline opens an article page with the publisher's headline, summary and photo, a link
-to the full story, and a comment thread of our own.
+Every story is written in-house in the admin console, in all three site languages at once.
+There is no outside headline source: `SportsDataProvider.getNews`/`getArticle` exist in the
+interface for a source that wants to supply news, but nothing currently implements them.
 
-- **A publisher's article is never copied.** `NewsArticle.body` exists only for our own
-  articles. For a publisher's story the page shows the headline, the summary and a short
-  `excerpt`: the opening lines as plain text, at most `EXCERPT_MAX_CHARS` (480) characters, cut
-  at a sentence, credited, above a button to the full story. The text is theirs (often a wire
-  agency's, licensed to them); a few quoted sentences with a link is how aggregators work,
-  showing the whole piece is republishing. Do not raise the limit to "fix" short pages: write
-  your own article in the admin console instead, which can be as long as you like.
-- Headlines come from the data source (`getNews`, `getArticle`, both optional). ESPN serves one
-  feed per competition; merged lists are capped at six feeds, de-duplicated and sorted by time.
-  Video clips are dropped. Headlines stay in the publisher's language, whatever the UI language.
+- **One article, three languages.** `title`, `summary` and `body` are each stored per language
+  (`titleEn`/`titleRu`/`titleRo`, and so on) on the same row; everything else (photo, byline,
+  tag, publish time) is shared. English is required; Russian and Romanian may be written later,
+  and the public site falls back to English for whichever is still blank.
+- The scoreboard's left sidebar lists the latest headlines (the same mix regardless of the
+  competition picker) with a link to `/news` for the full list. Each headline opens an article
+  page with its photo, full text and a comment thread.
 - Below 900px the design hides the sidebar, so the news moves under the matches instead.
 
 ## Admin console
@@ -187,11 +178,11 @@ to the full story, and a comment thread of our own.
 - **Every page and every action checks the role on the server**, against the database, on
   each request. Hiding a button protects nothing: server actions are public endpoints.
   A member who signs in at `/admin/login` is told they have no access and is signed out.
-- **News.** Articles live in the `article` table and show up in the site's news list and
-  under `/api/v1/news` next to the data source's headlines, so the mobile app gets them too.
-  "Feature on home" pins one to the top. Ours have a body (`NewsArticle.body`) because the
-  text is ours; publisher stories still only link out. The body is plain text, rendered as
-  text, never as HTML.
+- **News.** Articles live in the `article` table and show up in the site's news list and under
+  `/api/v1/news`, so the mobile app gets them too. "Feature on home" pins one to the top. The
+  editor has a language tab per site language; English is required, Russian and Romanian are
+  optional and fall back to English until written. The body is plain text, rendered as text,
+  never as HTML.
 - **Photos.** The editor uploads a JPEG, PNG or WebP of up to 5 MB (`POST /api/admin/uploads`,
   admins only, same origin only). The server decides what a file is from its first bytes, never
   from its name or declared type, so an SVG or a web page renamed to `.jpg` is refused. Files get
@@ -285,10 +276,9 @@ What is in place, and what a deployment still has to bring.
   memory of one process. **Run the app behind a proxy that sets the client address** (or name
   the header in `CLIENT_IP_HEADER`, for example `cf-connecting-ip`): without one a client can
   send its own `X-Forwarded-For` and dodge the limit. better-auth limits log in attempts on top.
-- **Upstream budget.** Every distinct match id, team id or far-off day is a distinct request
-  to a rate-limited source. TheSportsDB lookups may use at most 30% of its request budget, so
-  someone walking through ids cannot take the tables and the scoreboard down. Round numbers are
-  bounded, and every upstream request has a hard timeout.
+- **Upstream budget.** Every distinct match id, team id or far-off day is a distinct request to
+  the data source, bounded by the per-client rate limit above; a round number passed to
+  `getMatches` is bounded too (`matchday <= 60`).
 - **Writes** check the `Origin` header on top of `SameSite=Lax` cookies; server actions are
   same-origin by design. Every admin page and action reads the role from the database.
 - **The demo admin cannot reach production.** Its password is printed in this README. In
@@ -299,8 +289,8 @@ What is in place, and what a deployment still has to bring.
   HTML. Display names are cleaned on the server (NFKC, no control or direction-override
   characters, 40 characters). Names are not unique, so comments by staff carry a "Staff" tag
   that comes from the account's role, not from its name.
-- **Outside data is checked before it reaches a link or an image**: addresses from the news
-  feed must be `http(s)`, article photos `https` or one of our own uploads.
+- **An article's photo address is checked before it reaches an `<img>`**: it must be `https`
+  or one of our own uploads, never `javascript:` or `data:`.
 - **Uploads**: admins only, type decided from the file's bytes, no SVG, random names, served
   with `nosniff` and a sandboxing policy of their own.
 - **Dependencies**: `npm audit` is clean. Two fixes are `overrides` in the root
@@ -365,58 +355,20 @@ with its category, `hasTable` and `hasScorers`. Detail routes answer `501`
 when the configured source cannot serve them. Comment errors carry a machine-readable code
 (`unauthorized`, `empty`, `tooLong`, `tooFast`, `notFound`, `ownComment`) so each client shows its own translation.
 
-## About the ESPN source
+## About the api-football source
 
-`EspnProvider` reads ESPN's public site API, which is undocumented and comes with no stability
-guarantee, so treat it as a convenience for development and personal use.
+`ApiFootballProvider` reads [api-football.com](https://www.api-football.com) v3, which needs a
+paid key (`API_FOOTBALL_KEY`; the free tier's rate limit is too low for this app). It covers
+every competition `LEAGUES` lists, including full coverage (scorers, line-ups, stats) for
+Romania, Moldova, Ukraine and Russia, which older sources served thinly or not at all.
 
-- `dates` accepts a single day, a month or a year, but not ranges. Ranges are fetched per month.
-- There is no matchday concept, so fixtures navigate by month and match groups show a count.
-- The standings feed has no form column. Form is derived from the last two months of results.
-- The scorers feed has only full club names, so clubs are matched to the table for short names.
-- The friendlies feed is worldwide. Only friendlies involving a European nation are kept, and
-  the list of European nations is read from the Nations League table.
-- Player profiles live on a second host (`site.web.api.espn.com`). Most players have no headshot.
-- Crests and league logos are served from ESPN's CDN. They are trademarks of the clubs and
-  leagues. Check licensing before running this commercially, and swap the provider if needed.
-
-## About the TheSportsDB source
-
-`TheSportsDbProvider` serves SuperLiga România, Super Liga Moldova and the Ukrainian Premier
-League from [TheSportsDB](https://www.thesportsdb.com). It works without signing up, on the
-public test key, and that key's limits shape the whole adapter:
-
-- The free key cuts season lists short and returns only five rows of a league table, but it
-  returns every match of a single round. So **the table is computed from the results**, round by
-  round, with the same `computeStandings` the demo provider uses. It therefore always agrees
-  with the results the app shows. It can differ from the source's own table, which comes from a
-  different feed: at the time of writing the two disagree about one Ukrainian result.
-- A table is never built from part of the rounds. If one round cannot be read the table fails,
-  because a table from the rounds that happened to load is a wrong table that looks right.
-- Romania and Moldova follow the regular season with a play-off phase with its own points rules
-  (halved, or reset). The computed table stops at the end of the regular season (`regularRounds`).
-- **About 30 requests a minute.** The provider counts its own requests and stays under that,
-  shares identical requests, reuses a round for as long as its freshness allows (45 seconds when
-  something in it is live, a quarter of an hour otherwise, half a day once it is over), and hands
-  out a slightly old answer while it fetches a new one in the background.
-- Answers are kept on disk (`apps/web/data/cache/thesportsdb`, or `TSDB_CACHE_DIR`) so a restart
-  does not start from nothing. **The very first start is slow for these three leagues:** the
-  tables need about fifty requests, so they take roughly three minutes to appear, and until then
-  their pages say the data is still loading. The scoreboard never waits for this source for more
-  than 2.5 seconds; its leagues are simply left out of that answer. A Patreon key
-  (`THESPORTSDB_API_KEY`) raises the limit and shortens that first start.
-- This source deliberately bypasses the Next.js data cache (`cache: "no-store"`). That cache
-  refreshes stale entries on its own, outside the request budget, and route handlers wait for
-  those refreshes before answering.
-- It has no goalscorers, line-ups, match statistics, squads or scorer lists for these leagues.
-  Match pages show the score, venue, recent form and this season's meetings (both worked out
-  from the results); team pages show results and fixtures; there is no "Players" list.
-- Clubs have no three-letter codes there, so `tlaOf` makes them ("Universitatea Craiova" is UCR,
-  "Universitatea Cluj" is UCL). Ids are prefixed `tsdb-` so they never collide with ESPN's.
-
-Both providers give every upstream request a hard timeout (8 and 10 seconds). Node's own limits
-are about five minutes each for headers and body, and one stuck connection used to be able to
-hold a response for that long.
+- There is no numeric matchday in the source itself: single-table leagues use rounds named
+  "Regular Season - N", and `getMatches`'s `matchday` reconstructs that name directly, since it
+  is the source's own convention. A round that does not exist yields an empty list.
+- `getMatch` comes from a single `/fixtures?id=` call, which already carries events, line-ups
+  and statistics inline; head-to-head and each side's recent form cost one request more each.
+- Win/draw/win predictions are fetched only before kick-off (`getMatch`'s `prediction`), since
+  asking for one after the match has started or finished is a wasted request.
 
 ## Design
 
@@ -432,8 +384,10 @@ Deliberate differences from the prototype:
   sendings-off. Clicking the row opens the match page.
 - **Real accounts** replace the prototype's name-only local profile. Comments are real and
   stored, with upvotes. Match ratings are not built.
-- **Match groups show a match count**, because the data source has no matchday numbers.
-- **Articles link out** to the publisher for the full text instead of showing a body.
+- **Match groups show a match count** rather than a matchday number, to read the same way
+  across UEFA and national-team competitions, which are not single-table leagues.
+- **Articles have a full body**, written in-house per language, since there is no publisher
+  to link out to; the design's version pointed a headline at an outside story.
 - **The results ticker** in the navigation shows final scores only, from the past week, and
   by default only from the top five leagues; live games stay on the scoreboard. It appears
   from 1200px up. How many fit is measured from the strip, not from the window, because the

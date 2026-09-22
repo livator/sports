@@ -4,10 +4,8 @@ export function SiteFooter({ sources }: { sources: readonly string[] }) {
   const [source] = sources;
   const t = useTranslations('footer');
   const credit =
-    source === 'espn'
-      ? sources.includes('thesportsdb')
-        ? t('sourceEspnTsdb')
-        : t('sourceEspn')
+    source === 'api-football'
+      ? t('sourceApiFootball')
       : source === 'football-data.org'
         ? t('sourceFootballData')
         : t('sourceMock');

@@ -1,6 +1,7 @@
 'use client';
 
 import { LEAGUES } from '@sports/core';
+import { LOCALES, LOCALE_NAMES, type Locale } from '@sports/i18n';
 import Link from 'next/link';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { saveArticleAction } from '@/app/admin/actions';
@@ -15,15 +16,17 @@ export interface EditorArticle {
   publishedAt: string | null;
   leagueSlug: string | null;
   tag: string;
-  title: string;
-  summary: string;
-  body: string;
+  title: Record<Locale, string>;
+  summary: Record<Locale, string>;
+  body: Record<Locale, string>;
   author: string;
   imageUrl: string;
   caption: string;
   featured: boolean;
   commentsOn: boolean;
 }
+
+const EMPTY_LOCALIZED: Record<Locale, string> = { en: '', ru: '', ro: '' };
 
 /** Mirrors ARTICLE_LIMITS on the server, which has the final say. */
 const LIMITS = { title: 160, summary: 400, body: 20_000, tag: 40, author: 80, caption: 200 };
@@ -53,9 +56,9 @@ export function ArticleEditor({
   const [fields, setFields] = useState({
     leagueSlug: article?.leagueSlug ?? '',
     tag: article?.tag ?? '',
-    title: article?.title ?? '',
-    summary: article?.summary ?? '',
-    body: article?.body ?? '',
+    title: article?.title ?? EMPTY_LOCALIZED,
+    summary: article?.summary ?? EMPTY_LOCALIZED,
+    body: article?.body ?? EMPTY_LOCALIZED,
     author: article?.author ?? defaultAuthor,
     imageUrl: article?.imageUrl ?? '',
     caption: article?.caption ?? '',
@@ -65,6 +68,9 @@ export function ArticleEditor({
     // cannot know.
     publishAt: '',
   });
+  // Which language's headline, standfirst and body are shown. English is required; the
+  // other two may be filled in later, so the site falls back to English until they are.
+  const [lang, setLang] = useState<Locale>('en');
   const [dirty, setDirty] = useState(false);
   const [note, setNote] = useState<{ text: string; field?: ArticleField } | null>(null);
   const [savedLabel, setSavedLabel] = useState('');
@@ -129,9 +135,16 @@ export function ArticleEditor({
     setNote(null);
   };
 
+  const setLocalized = (field: 'title' | 'summary' | 'body', value: string) => {
+    setFields((f) => ({ ...f, [field]: { ...f[field], [lang]: value } }));
+    setDirty(true);
+    setNote(null);
+  };
+
   function save(publish: boolean) {
-    if (!fields.title.trim()) {
-      setNote({ text: 'A headline is required.', field: 'title' });
+    if (!fields.title.en.trim()) {
+      setLang('en');
+      setNote({ text: 'An English headline is required.', field: 'title.en' });
       return;
     }
     startTransition(async () => {
@@ -139,11 +152,30 @@ export function ArticleEditor({
         id,
         publish,
         fields: {
-          ...fields,
+          leagueSlug: fields.leagueSlug,
+          tag: fields.tag,
+          title_en: fields.title.en,
+          title_ru: fields.title.ru,
+          title_ro: fields.title.ro,
+          summary_en: fields.summary.en,
+          summary_ru: fields.summary.ru,
+          summary_ro: fields.summary.ro,
+          body_en: fields.body.en,
+          body_ru: fields.body.ru,
+          body_ro: fields.body.ro,
+          author: fields.author,
+          imageUrl: fields.imageUrl,
+          caption: fields.caption,
+          featured: fields.featured,
+          commentsOn: fields.commentsOn,
           publishAt: fields.publishAt ? new Date(fields.publishAt).toISOString() : '',
         },
       });
       if (!result.ok) {
+        // A localized field's error names its language ("title.ru"): jump there so the
+        // highlighted field is actually visible.
+        const errorLang = result.field?.split('.')[1];
+        if (errorLang === 'en' || errorLang === 'ru' || errorLang === 'ro') setLang(errorLang);
         setNote({ text: result.message, ...(result.field ? { field: result.field } : {}) });
         return;
       }
@@ -166,8 +198,11 @@ export function ArticleEditor({
   }
 
   const isNew = id === null;
-  const words = fields.body.trim() ? fields.body.trim().split(/\s+/).length : 0;
-  const paragraphs = fields.body.split(/\n\s*\n/).filter((p) => p.trim());
+  const title = fields.title[lang];
+  const summary = fields.summary[lang];
+  const body = fields.body[lang];
+  const words = body.trim() ? body.trim().split(/\s+/).length : 0;
+  const paragraphs = body.split(/\n\s*\n/).filter((p) => p.trim());
   const invalid = (field: ArticleField) => (note?.field === field ? true : undefined);
   const showPhoto = fields.imageUrl.trim() !== '' && isPhotoAddress(fields.imageUrl.trim());
 
@@ -247,6 +282,25 @@ export function ArticleEditor({
               />
             </div>
           </div>
+          <div className="flex gap-x-[18px] border-b" role="tablist" aria-label="Language">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                role="tab"
+                aria-selected={lang === l}
+                onClick={() => setLang(l)}
+                className={`border-b-2 py-1.5 text-sm ${
+                  lang === l
+                    ? 'border-accent font-bold text-ink'
+                    : 'border-transparent text-ink-2 hover:text-ink'
+                }`}
+              >
+                {LOCALE_NAMES[l]}
+                {l === 'en' ? ' *' : !fields.title[l].trim() ? ' (not written)' : ''}
+              </button>
+            ))}
+          </div>
           <div className="field">
             <label htmlFor="a-title">Headline</label>
             <input
@@ -254,9 +308,9 @@ export function ArticleEditor({
               className="input text-xl font-extrabold"
               placeholder="Write a clear, specific headline"
               maxLength={LIMITS.title}
-              aria-invalid={invalid('title')}
-              value={fields.title}
-              onChange={(e) => set('title', e.target.value)}
+              aria-invalid={invalid(`title.${lang}`)}
+              value={title}
+              onChange={(e) => setLocalized('title', e.target.value)}
             />
           </div>
           <div className="field">
@@ -266,8 +320,9 @@ export function ArticleEditor({
               className="input min-h-[72px] resize-y"
               placeholder="One or two sentences that summarise the story"
               maxLength={LIMITS.summary}
-              value={fields.summary}
-              onChange={(e) => set('summary', e.target.value)}
+              aria-invalid={invalid(`summary.${lang}`)}
+              value={summary}
+              onChange={(e) => setLocalized('summary', e.target.value)}
             />
           </div>
           <div className="field">
@@ -277,8 +332,9 @@ export function ArticleEditor({
               className="input min-h-[280px] resize-y leading-[1.55]"
               placeholder="Article text. Blank line between paragraphs."
               maxLength={LIMITS.body}
-              value={fields.body}
-              onChange={(e) => set('body', e.target.value)}
+              aria-invalid={invalid(`body.${lang}`)}
+              value={body}
+              onChange={(e) => setLocalized('body', e.target.value)}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -387,7 +443,7 @@ export function ArticleEditor({
         </div>
 
         <div className="min-w-0">
-          <h2 className="pb-2.5 eyebrow">Preview</h2>
+          <h2 className="pb-2.5 eyebrow">Preview · {LOCALE_NAMES[lang]}</h2>
           <div className="rule-2" />
           <div className="mt-4 border bg-surface p-7">
             <div className="mb-3 flex flex-wrap gap-3 text-xs tracking-[0.08em] uppercase">
@@ -398,13 +454,13 @@ export function ArticleEditor({
             </div>
             <h3
               className={`mb-3.5 -ml-[0.02em] text-[clamp(24px,2.6vw,34px)] leading-[1.08] font-extrabold tracking-[-0.02em] ${
-                fields.title ? '' : 'text-neutral-500'
+                title ? '' : 'text-neutral-500'
               }`}
             >
-              {fields.title || 'Your headline appears here'}
+              {title || 'Your headline appears here'}
             </h3>
             <p className="mb-5 text-base leading-[1.45] text-[color-mix(in_srgb,var(--color-ink)_80%,transparent)]">
-              {fields.summary || 'The standfirst summarises the story in one or two sentences.'}
+              {summary || 'The standfirst summarises the story in one or two sentences.'}
             </p>
             <div className="rule-2" />
             {showPhoto ? (

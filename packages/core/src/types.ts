@@ -92,7 +92,7 @@ export interface League {
   teamCount?: number;
   /**
    * Fallback qualification places by position, used only when a data source does not say
-   * what each table position means. ESPN does, so most competitions leave this out.
+   * what each table position means.
    */
   zones?: LeagueZones;
 }

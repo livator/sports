@@ -1,6 +1,7 @@
 import { LEAGUES, type NewsArticle } from '@sports/core';
 import { useFormatter, useNow, useTranslations } from 'next-intl';
 import { NewsLink } from './news-link';
+import { Link } from '@/i18n/navigation';
 import { competitionName } from '@/lib/competitions';
 
 /** Competition name when we know it, the publisher's own label otherwise. */
@@ -21,6 +22,8 @@ export function NewsList({
   heading,
   activeId,
   thumbnails = false,
+  moreHref,
+  moreLabel,
 }: {
   articles: NewsArticle[] | null;
   /** What the list is filtered to, shown on the right of the heading. */
@@ -31,6 +34,9 @@ export function NewsList({
   activeId?: string;
   /** Show each story's photo beside its headline. For columns with the width to spare. */
   thumbnails?: boolean;
+  /** A fuller list beyond this teaser, linked below the stories. */
+  moreHref?: string;
+  moreLabel?: string;
 }) {
   const t = useTranslations('news');
   const format = useFormatter();
@@ -69,6 +75,14 @@ export function NewsList({
             </span>
           </NewsLink>
         ))
+      )}
+      {moreHref && articles && articles.length > 0 && (
+        <Link
+          href={moreHref}
+          className="block border-l-2 border-l-transparent py-3 pl-2.5 text-sm font-semibold hover:text-accent"
+        >
+          {moreLabel} →
+        </Link>
       )}
     </section>
   );

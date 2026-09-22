@@ -11,7 +11,6 @@ import { Scoreboard } from '@/components/scoreboard';
 import { Shell } from '@/components/shell';
 import { YourClubs } from '@/components/your-clubs';
 import {
-  competitionName,
   parseSelection,
   selectionCategory,
   selectionParam,
@@ -72,7 +71,6 @@ export default async function HomePage({ params, searchParams }: Props) {
   setRequestLocale(locale);
   const t = await getTranslations('home');
   const tn = await getTranslations('news');
-  const tc = await getTranslations('competitions');
 
   const query = await searchParams;
   const today = await viewerToday();
@@ -101,24 +99,20 @@ export default async function HomePage({ params, searchParams }: Props) {
     ]);
     return { side, standings, scorers };
   })();
+  // The news list is the same for every filter: the most relevant stories across every
+  // competition, not just the one currently selected in the scoreboard above it.
   const [matches, news, { side, standings, scorers }] = await Promise.all([
     matchesReady,
-    getNewsFeed(slugs ?? [], NEWS_COUNT),
+    getNewsFeed([], NEWS_COUNT, locale),
     sideReady,
   ]);
   // After the response has gone out: get the competitions one click away ready.
-  after(() => warmCompetitions(likelyNext(selection, leagues), NEWS_COUNT));
+  after(() => warmCompetitions(likelyNext(selection, leagues)));
 
-  const newsFilter =
-    selection.kind === 'league'
-      ? competitionName(selection.league, tc, true)
-      : selection.kind === 'category'
-        ? tc(`categories.${selection.category}`)
-        : tn('filterAll');
   // Dimmed while a filter change is on its way; the picker and the match list do not wait.
   const newsList = (
     <PendingRegion>
-      <NewsList articles={news} filterLabel={newsFilter} />
+      <NewsList articles={news} moreHref="/news" moreLabel={tn('seeMore')} />
     </PendingRegion>
   );
 

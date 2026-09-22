@@ -22,11 +22,11 @@ const MORE_NEWS = 7;
 
 type Props = { params: Promise<{ locale: Locale; id: string }> };
 
-async function load(id: string): Promise<NewsArticle | null | 'unsupported'> {
+async function load(id: string, locale: Locale): Promise<NewsArticle | null | 'unsupported'> {
   if (!isArticleId(id)) notFound();
   let article: Awaited<ReturnType<typeof getAnyArticle>>;
   try {
-    article = await getAnyArticle(id);
+    article = await getAnyArticle(id, locale);
   } catch (error) {
     // An article the publisher does not have is a missing page, not a temporary failure.
     if (error instanceof ProviderError && error.status === 404) notFound();
@@ -41,7 +41,7 @@ async function load(id: string): Promise<NewsArticle | null | 'unsupported'> {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, id } = await params;
-  const article = await load(id);
+  const article = await load(id, locale);
   if (article && article !== 'unsupported') {
     return { title: article.title, description: article.summary };
   }
@@ -56,7 +56,7 @@ export default async function ArticlePage({ params }: Props) {
   const tc = await getTranslations('competitions');
 
   const [article, commentCount] = await Promise.all([
-    load(id),
+    load(id, locale),
     safe(countComments({ type: 'article', articleId: id })),
   ]);
 
@@ -73,7 +73,7 @@ export default async function ArticlePage({ params }: Props) {
   const league = LEAGUES.find((l) => l.slug === article.leagueSlug);
   // More from the same competition, or the general mix. The home page asks for the same
   // feeds, so this is nearly always served from cache.
-  const more = await getNewsFeed(league ? [league.slug] : [], MORE_NEWS);
+  const more = await getNewsFeed(league ? [league.slug] : [], MORE_NEWS, locale);
   const section = league ? competitionName(league, tc) : (article.tag ?? t('football'));
   const tag = article.label ? `${section} · ${article.label}` : section;
   // Only articles written in our own console have a body; see NewsArticle.

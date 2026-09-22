@@ -1,37 +1,35 @@
 import 'server-only';
 
 import { isOwnArticleId, type LeagueSlug, type NewsArticle } from '@sports/core';
+import type { Locale } from '@sports/i18n';
 import { getLiveArticle, listLiveArticles } from './articles';
-import { getProvider, safe } from './provider';
+import { safe } from './provider';
 
 /**
- * The site's news list: our own articles together with the data source's headlines.
- * Featured articles lead; everything else is newest first. Returns null only when neither
- * side could be read, so one failing source never blanks the list.
+ * The site's news list: our own staff-written articles, newest first with featured ones
+ * leading. There is no outside source any more; every story is written in-house, in all three
+ * site languages, so there is nothing to merge or attribute.
  */
 export async function getNewsFeed(
   leagues: readonly LeagueSlug[],
   limit: number,
+  locale: Locale = 'en',
 ): Promise<NewsArticle[] | null> {
-  const provider = getProvider();
-  const [own, external] = await Promise.all([
-    safe(listLiveArticles(leagues, limit)),
-    provider.getNews ? safe(provider.getNews(leagues, limit)) : Promise.resolve([]),
-  ]);
-  if (!own && !external) return null;
-
+  const articles = await safe(listLiveArticles(leagues, limit, locale));
+  if (!articles) return null;
   const byTime = (a: NewsArticle, b: NewsArticle) => b.publishedAt.localeCompare(a.publishedAt);
-  const featured = (own ?? []).filter((a) => a.featured).sort(byTime);
-  const rest = [...(own ?? []).filter((a) => !a.featured), ...(external ?? [])].sort(byTime);
+  const featured = articles.filter((a) => a.featured).sort(byTime);
+  const rest = articles.filter((a) => !a.featured).sort(byTime);
   return [...featured, ...rest].slice(0, limit);
 }
 
-/** One article by id, from our own database or from the data source. Null when not found. */
-export async function getAnyArticle(id: string): Promise<NewsArticle | null | 'unsupported'> {
-  if (isOwnArticleId(id)) return getLiveArticle(id);
-  const provider = getProvider();
-  if (!provider.getArticle) return 'unsupported';
-  return provider.getArticle(id);
+/** One of our own articles by id. Null when not found or not live. */
+export async function getAnyArticle(
+  id: string,
+  locale: Locale = 'en',
+): Promise<NewsArticle | null | 'unsupported'> {
+  if (!isOwnArticleId(id)) return 'unsupported';
+  return getLiveArticle(id, locale);
 }
 
-export const isArticleId = (id: string): boolean => /^\d{1,12}$/.test(id) || isOwnArticleId(id);
+export const isArticleId = isOwnArticleId;
