@@ -23,6 +23,14 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
+/**
+ * Every page here calls the sports-data provider or the database (even the footer alone does,
+ * for its credit line), so none of it can be safely baked in at build time: scores, tables and
+ * news would freeze as of the build and stay stale until the next deploy. This also means
+ * `next build` never touches the data source, so it succeeds without an API key.
+ */
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({ params }: Pick<Props, 'params'>): Promise<Metadata> {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) return {};
