@@ -78,6 +78,7 @@ export default async function PlayerPage({ params }: Props) {
       player.shots
         ? [t('shotsPerGoal'), player.goals ? (player.shots / player.goals).toFixed(1) : '–']
         : null,
+      player.injured ? [t('injuryStatus'), t('injured')] : null,
     ] as Array<[string, string] | null>
   ).filter((f): f is [string, string] => f !== null);
   const maxGoals = Math.max(1, ...log.map((m) => m.goals));

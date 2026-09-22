@@ -8,6 +8,7 @@ export * from './providers/types';
 export { MockProvider, type MockProviderOptions } from './providers/mock';
 export { SEED_TEAMS } from './providers/mock/teams';
 export { FootballDataProvider, type FootballDataProviderOptions } from './providers/football-data';
+export { ApiFootballProvider, type ApiFootballProviderOptions } from './providers/api-football';
 export { EspnProvider, type EspnProviderOptions } from './providers/espn';
 export {
   TheSportsDbProvider,

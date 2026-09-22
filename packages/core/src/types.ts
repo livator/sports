@@ -86,6 +86,8 @@ export interface League {
   hasScorers: boolean;
   /** football-data.org competition code, for the competitions its free tier covers. */
   externalCode?: string;
+  /** api-football.com (API-Sports) numeric league id. */
+  apiFootballId?: number;
   /** Clubs in a single-table league. Absent for cups and grouped competitions. */
   teamCount?: number;
   /**
@@ -285,6 +287,15 @@ export interface MatchDetail {
     summary?: string;
     meetings: PastMeeting[];
   };
+  /** Pre-match odds of each outcome, when the source publishes one. Not present after kick-off. */
+  prediction?: MatchPrediction;
+}
+
+export interface MatchPrediction {
+  /** Whole percentages, summing to roughly 100. */
+  percent: { home: number; draw: number; away: number };
+  /** The source's picked winner, when the match is not judged too close to call. */
+  winnerTeamId?: string;
 }
 
 export interface SquadPlayer {
@@ -298,6 +309,8 @@ export interface SquadPlayer {
   appearances: number;
   goals: number;
   assists: number;
+  /** True/false when the source tracks it; absent for sources that do not. */
+  injured?: boolean;
 }
 
 export interface TeamDetail {

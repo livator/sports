@@ -100,6 +100,8 @@
     "lineups": "Echipe",
     "form": "Formă",
     "seasonComparison": "Comparație pe sezon",
+    "prediction": "Pronostic",
+    "predictionDraw": "Egal",
     "bench": "Rezerve",
     "lineupsLater": "Echipele de start se publică cu aproximativ o oră înainte de meci.",
     "lineupsNone": "Nu s-au publicat echipele pentru acest meci.",
@@ -188,10 +190,13 @@
       "Goalkeeper": "P",
       "Defender": "F",
       "Midfielder": "M",
-      "Forward": "A"
+      "Forward": "A",
+      "Attacker": "A"
     },
     "nextMatch": "Următorul meci",
-    "relatedNews": "Știri despre echipă"
+    "relatedNews": "Știri despre echipă",
+    "injured": "Accidentat",
+    "injuredShort": "ACC"
   },
   "player": {
     "fallbackTitle": "Jucător",
@@ -215,11 +220,14 @@
     "born": "Data nașterii",
     "height": "Înălțime",
     "shotsPerGoal": "Șuturi pe gol",
+    "injuryStatus": "Stare",
+    "injured": "Accidentat",
     "positions": {
       "Goalkeeper": "Portar",
       "Defender": "Fundaș",
       "Midfielder": "Mijlocaș",
-      "Forward": "Atacant"
+      "Forward": "Atacant",
+      "Attacker": "Atacant"
     }
   },
   "notice": {

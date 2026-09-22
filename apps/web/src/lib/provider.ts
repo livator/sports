@@ -1,6 +1,7 @@
 import 'server-only';
 
 import {
+  ApiFootballProvider,
   CompositeProvider,
   EspnProvider,
   FootballDataProvider,
@@ -42,6 +43,31 @@ function espnRequestInit(url: URL): RequestInit {
   return { next: { revalidate } } as RequestInit;
 }
 
+/** Next.js data-cache lifetimes per api-football endpoint, in seconds. */
+function apiFootballRequestInit(url: URL): RequestInit {
+  let revalidate = 300; // standings, fixture lists by round or date range
+  if (url.pathname.endsWith('/leagues') || url.pathname.endsWith('/fixtures/rounds')) {
+    revalidate = 6 * 60 * 60; // season metadata, hardly changes intra-day
+  } else if (url.pathname.endsWith('/players/topscorers')) {
+    revalidate = 900;
+  } else if (url.pathname.endsWith('/headtohead')) {
+    revalidate = 6 * 60 * 60; // past meetings; one more is added only once in a while
+  } else if (url.pathname.endsWith('/predictions')) {
+    revalidate = 60 * 60; // settled well before kick-off; team news can still shift it
+  } else if (url.pathname.endsWith('/teams')) {
+    revalidate = 6 * 60 * 60; // club info and venue, essentially static
+  } else if (url.pathname.endsWith('/players')) {
+    revalidate = 900; // squad list and season stats
+  } else if (url.pathname.endsWith('/fixtures') && url.searchParams.has('id')) {
+    revalidate = 30; // a single match, possibly live
+  } else if (url.pathname.endsWith('/fixtures') && url.searchParams.has('team')) {
+    revalidate = 900; // recent form for a match's head-to-head panel
+  } else if (url.pathname.endsWith('/fixtures') && url.searchParams.has('date')) {
+    revalidate = scoreboardLifetime(url.searchParams.get('date')?.replaceAll('-', '') ?? '');
+  }
+  return { next: { revalidate } } as RequestInit;
+}
+
 function create(): SportsDataProvider {
   switch (env.dataProvider) {
     case 'mock':
@@ -54,6 +80,11 @@ function create(): SportsDataProvider {
         apiKey,
         requestInit: { next: { revalidate: 60 } } as RequestInit,
       });
+    }
+    case 'api-football': {
+      const apiKey = env.apiFootballKey;
+      if (!apiKey) throw new Error('SPORTS_DATA_PROVIDER=api-football needs API_FOOTBALL_KEY');
+      return new ApiFootballProvider({ apiKey, requestInit: apiFootballRequestInit });
     }
     default:
       // ESPN for everything it covers; TheSportsDB for Romania, Moldova and Ukraine.

@@ -100,6 +100,8 @@
     "lineups": "Line-ups",
     "form": "Form",
     "seasonComparison": "Season comparison",
+    "prediction": "Prediction",
+    "predictionDraw": "Draw",
     "bench": "Bench",
     "lineupsLater": "Line-ups are published about an hour before kick-off.",
     "lineupsNone": "No line-ups published for this match.",
@@ -188,10 +190,13 @@
       "Goalkeeper": "GK",
       "Defender": "DF",
       "Midfielder": "MF",
-      "Forward": "FW"
+      "Forward": "FW",
+      "Attacker": "FW"
     },
     "nextMatch": "Next match",
-    "relatedNews": "Related news"
+    "relatedNews": "Related news",
+    "injured": "Injured",
+    "injuredShort": "INJ"
   },
   "player": {
     "fallbackTitle": "Player",
@@ -215,11 +220,14 @@
     "born": "Born",
     "height": "Height",
     "shotsPerGoal": "Shots per goal",
+    "injuryStatus": "Status",
+    "injured": "Injured",
     "positions": {
       "Goalkeeper": "Goalkeeper",
       "Defender": "Defender",
       "Midfielder": "Midfielder",
-      "Forward": "Forward"
+      "Forward": "Forward",
+      "Attacker": "Forward"
     }
   },
   "notice": {

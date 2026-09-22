@@ -58,6 +58,8 @@ const nextConfig: NextConfig = {
       // Club badges for the leagues served by TheSportsDB.
       { protocol: 'https', hostname: 'r2.thesportsdb.com' },
       { protocol: 'https', hostname: 'www.thesportsdb.com' },
+      // Crests, player photos and venue images for api-football.
+      { protocol: 'https', hostname: 'media.api-sports.io' },
     ],
     // Crests never change at a given URL; keep optimised copies for a month.
     minimumCacheTTL: 60 * 60 * 24 * 30,

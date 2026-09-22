@@ -100,6 +100,8 @@
     "lineups": "Составы",
     "form": "Форма",
     "seasonComparison": "Сравнение за сезон",
+    "prediction": "Прогноз",
+    "predictionDraw": "Ничья",
     "bench": "Запасные",
     "lineupsLater": "Составы публикуются примерно за час до начала матча.",
     "lineupsNone": "Составы на этот матч не опубликованы.",
@@ -188,10 +190,13 @@
       "Goalkeeper": "ВР",
       "Defender": "ЗЩ",
       "Midfielder": "ПЗ",
-      "Forward": "НП"
+      "Forward": "НП",
+      "Attacker": "НП"
     },
     "nextMatch": "Следующий матч",
-    "relatedNews": "Новости по теме"
+    "relatedNews": "Новости по теме",
+    "injured": "Травма",
+    "injuredShort": "ТРАВМА"
   },
   "player": {
     "fallbackTitle": "Игрок",
@@ -215,11 +220,14 @@
     "born": "Дата рождения",
     "height": "Рост",
     "shotsPerGoal": "Ударов на гол",
+    "injuryStatus": "Статус",
+    "injured": "Травмирован",
     "positions": {
       "Goalkeeper": "Вратарь",
       "Defender": "Защитник",
       "Midfielder": "Полузащитник",
-      "Forward": "Нападающий"
+      "Forward": "Нападающий",
+      "Attacker": "Нападающий"
     }
   },
   "notice": {

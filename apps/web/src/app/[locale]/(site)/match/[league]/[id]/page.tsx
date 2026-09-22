@@ -3,8 +3,10 @@ import {
   formatKickoffDate,
   isLive,
   type MatchDetail,
+  type MatchPrediction,
   type MatchStat,
   type StandingRow,
+  type Team,
   type TimelineEvent,
 } from '@sports/core';
 import { LOCALE_TAGS, type Locale } from '@sports/i18n';
@@ -128,6 +130,45 @@ function StatBars({
   );
 }
 
+function PredictionBar({
+  prediction,
+  homeTeam,
+  awayTeam,
+  drawLabel,
+  heading,
+}: {
+  prediction: MatchPrediction;
+  homeTeam: Team;
+  awayTeam: Team;
+  drawLabel: string;
+  heading: string;
+}) {
+  const { home, draw, away } = prediction.percent;
+  const favours = (teamId: string) => prediction.winnerTeamId === teamId;
+  return (
+    <div className="mb-9 max-w-[480px]">
+      <h2 className="pb-2.5 eyebrow">{heading}</h2>
+      <div className="rule-2" />
+      <div className="mt-6 flex h-2 gap-[2px]">
+        <div className="bg-ink" style={{ width: `${home}%` }} />
+        <div className="bg-neutral-400" style={{ width: `${draw}%` }} />
+        <div className="bg-neutral-200" style={{ width: `${away}%` }} />
+      </div>
+      <div className="mt-2.5 flex justify-between tnum text-sm">
+        <span className={favours(homeTeam.id) ? 'font-extrabold' : ''}>
+          {home}% · {homeTeam.shortName}
+        </span>
+        <span className="text-ink-2">
+          {draw}% · {drawLabel}
+        </span>
+        <span className={favours(awayTeam.id) ? 'font-extrabold' : ''}>
+          {away}% · {awayTeam.shortName}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default async function MatchPage({ params, searchParams }: Props) {
   const { locale, league: leagueSlug, id } = await params;
   setRequestLocale(locale);
@@ -152,7 +193,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
     );
   }
 
-  const { match, stats, timeline, headToHead, attendance, lineups, form } = detail;
+  const { match, stats, timeline, headToHead, attendance, lineups, form, prediction } = detail;
   const requestedTab = (await searchParams).tab;
   const tab: Tab = TABS.find((name) => name === requestedTab) ?? 'summary';
   const base = `/match/${league.slug}/${match.id}`;
@@ -315,7 +356,18 @@ export default async function MatchPage({ params, searchParams }: Props) {
         <div className="flex flex-wrap gap-x-14 gap-y-10 pt-8">
           <div className="min-w-0 flex-[1_1_480px]">
             {notStarted ? (
-              <p className="mb-6 text-[17px] text-ink-2">{t('notStarted')}</p>
+              <>
+                {prediction && (
+                  <PredictionBar
+                    prediction={prediction}
+                    homeTeam={match.homeTeam}
+                    awayTeam={match.awayTeam}
+                    drawLabel={t('predictionDraw')}
+                    heading={t('prediction')}
+                  />
+                )}
+                <p className="mb-6 text-[17px] text-ink-2">{t('notStarted')}</p>
+              </>
             ) : timeline.length > 0 ? (
               timeline.map((e, i) => {
                 const weight = isGoal(e) ? 'font-bold' : '';

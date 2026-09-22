@@ -62,12 +62,13 @@ English is unprefixed. Russian lives under `/ru`, Romanian under `/ro` (for exam
 required. Detail views (`getMatch`, `getTeam`, `getPlayer`) are optional, and pages show a notice
 when the configured source cannot serve them.
 
-| Provider               | Data                                                                | Details | Key |
-| ---------------------- | ------------------------------------------------------------------- | ------- | --- |
-| `EspnProvider`         | Real. Scores, live clocks, goalscorers, cards, tables, crests.      | Yes     | No  |
-| `FootballDataProvider` | Real. [football-data.org](https://www.football-data.org) v4.        | No      | Yes |
-| `MockProvider`         | Simulated, deterministic season. For offline work and tests only.   | No      | No  |
-| `HttpProvider`         | Whatever the web app serves at `/api/v1`. This is what mobile uses. | Yes     | No  |
+| Provider               | Data                                                                                                | Details | Key |
+| ---------------------- | --------------------------------------------------------------------------------------------------- | ------- | --- |
+| `EspnProvider`         | Real. Scores, live clocks, goalscorers, cards, tables, crests.                                      | Yes     | No  |
+| `FootballDataProvider` | Real. [football-data.org](https://www.football-data.org) v4.                                        | No      | Yes |
+| `ApiFootballProvider`  | Real. [api-football.com](https://www.api-football.com) v3. Covers every competition this app knows. | No      | Yes |
+| `MockProvider`         | Simulated, deterministic season. For offline work and tests only.                                   | No      | No  |
+| `HttpProvider`         | Whatever the web app serves at `/api/v1`. This is what mobile uses.                                 | Yes     | No  |
 
 ## Competitions
 

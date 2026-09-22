@@ -11,7 +11,12 @@ const standardZones = {
 const logo = (id: number) => `https://a.espncdn.com/i/leaguelogos/soccer/500/${id}.png`;
 
 type Domestic = Pick<League, 'slug' | 'name' | 'shortName' | 'country' | 'countryCode'> &
-  Partial<Pick<League, 'logoUrl' | 'externalCode' | 'teamCount' | 'zones' | 'hasScorers'>>;
+  Partial<
+    Pick<
+      League,
+      'logoUrl' | 'externalCode' | 'apiFootballId' | 'teamCount' | 'zones' | 'hasScorers'
+    >
+  >;
 
 const domestic = (category: 'top5' | 'more', l: Domestic): League => ({
   category,
@@ -23,7 +28,7 @@ const domestic = (category: 'top5' | 'more', l: Domestic): League => ({
 const continental = (
   category: 'uefa' | 'national',
   l: Pick<League, 'slug' | 'name' | 'shortName' | 'hasTable' | 'hasScorers'> &
-    Partial<Pick<League, 'logoUrl' | 'externalCode'>>,
+    Partial<Pick<League, 'logoUrl' | 'externalCode' | 'apiFootballId'>>,
 ): League => ({ category, country: 'Europe', countryCode: 'EU', ...l });
 
 /** Order of categories wherever competitions are listed: the biggest stage first. */
@@ -40,6 +45,7 @@ export const LEAGUES: readonly League[] = [
     shortName: 'UCL',
     logoUrl: logo(2),
     externalCode: 'CL',
+    apiFootballId: 2,
     hasTable: true,
     hasScorers: true,
   }),
@@ -48,6 +54,7 @@ export const LEAGUES: readonly League[] = [
     name: 'Europa League',
     shortName: 'UEL',
     logoUrl: logo(2310),
+    apiFootballId: 3,
     hasTable: true,
     hasScorers: true,
   }),
@@ -56,6 +63,7 @@ export const LEAGUES: readonly League[] = [
     name: 'Conference League',
     shortName: 'UECL',
     logoUrl: logo(20296),
+    apiFootballId: 848,
     hasTable: true,
     hasScorers: true,
   }),
@@ -65,6 +73,7 @@ export const LEAGUES: readonly League[] = [
     name: 'Nations League',
     shortName: 'Nations',
     logoUrl: logo(2395),
+    apiFootballId: 5,
     hasTable: true,
     hasScorers: false,
   }),
@@ -73,6 +82,7 @@ export const LEAGUES: readonly League[] = [
     name: 'Euro Qualifying',
     shortName: 'Euro Q',
     logoUrl: logo(56),
+    apiFootballId: 960,
     hasTable: true,
     hasScorers: false,
   }),
@@ -81,6 +91,7 @@ export const LEAGUES: readonly League[] = [
     name: 'International Friendlies',
     shortName: 'Friendlies',
     logoUrl: logo(53),
+    apiFootballId: 10,
     hasTable: false,
     hasScorers: false,
   }),
@@ -93,6 +104,7 @@ export const LEAGUES: readonly League[] = [
     countryCode: 'GB',
     logoUrl: logo(23),
     externalCode: 'PL',
+    apiFootballId: 39,
     teamCount: 20,
     zones: { ...standardZones, championsLeague: 5 },
   }),
@@ -104,6 +116,7 @@ export const LEAGUES: readonly League[] = [
     countryCode: 'ES',
     logoUrl: logo(15),
     externalCode: 'PD',
+    apiFootballId: 140,
     teamCount: 20,
     zones: { ...standardZones, championsLeague: 5 },
   }),
@@ -115,6 +128,7 @@ export const LEAGUES: readonly League[] = [
     countryCode: 'IT',
     logoUrl: logo(12),
     externalCode: 'SA',
+    apiFootballId: 135,
     teamCount: 20,
     zones: { ...standardZones },
   }),
@@ -126,6 +140,7 @@ export const LEAGUES: readonly League[] = [
     countryCode: 'DE',
     logoUrl: logo(10),
     externalCode: 'BL1',
+    apiFootballId: 78,
     teamCount: 18,
     zones: { ...standardZones, relegation: 2, relegationPlayoff: 1 },
   }),
@@ -137,6 +152,7 @@ export const LEAGUES: readonly League[] = [
     countryCode: 'FR',
     logoUrl: logo(9),
     externalCode: 'FL1',
+    apiFootballId: 61,
     teamCount: 18,
     zones: { ...standardZones, relegation: 2, relegationPlayoff: 1 },
   }),
@@ -152,6 +168,7 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Romania',
     country: 'Romania',
     countryCode: 'RO',
+    apiFootballId: 283,
     teamCount: 16,
     hasScorers: false,
   }),
@@ -161,6 +178,7 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Moldova',
     country: 'Moldova',
     countryCode: 'MD',
+    apiFootballId: 394,
     teamCount: 8,
     hasScorers: false,
   }),
@@ -170,6 +188,7 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Ukraine',
     country: 'Ukraine',
     countryCode: 'UA',
+    apiFootballId: 333,
     teamCount: 16,
     hasScorers: false,
   }),
@@ -181,6 +200,7 @@ export const LEAGUES: readonly League[] = [
     countryCode: 'NL',
     logoUrl: logo(11),
     externalCode: 'DED',
+    apiFootballId: 88,
     teamCount: 18,
   }),
   domestic('more', {
@@ -191,6 +211,7 @@ export const LEAGUES: readonly League[] = [
     countryCode: 'PT',
     logoUrl: logo(14),
     externalCode: 'PPL',
+    apiFootballId: 94,
     teamCount: 18,
   }),
   domestic('more', {
@@ -200,6 +221,7 @@ export const LEAGUES: readonly League[] = [
     country: 'Belgium',
     countryCode: 'BE',
     logoUrl: logo(6),
+    apiFootballId: 144,
     teamCount: 18,
   }),
   domestic('more', {
@@ -209,6 +231,7 @@ export const LEAGUES: readonly League[] = [
     country: 'Turkey',
     countryCode: 'TR',
     logoUrl: logo(18),
+    apiFootballId: 203,
     teamCount: 18,
   }),
   domestic('more', {
@@ -218,6 +241,7 @@ export const LEAGUES: readonly League[] = [
     country: 'Scotland',
     countryCode: 'GB',
     logoUrl: logo(45),
+    apiFootballId: 179,
     teamCount: 12,
   }),
   domestic('more', {
@@ -227,6 +251,7 @@ export const LEAGUES: readonly League[] = [
     country: 'Greece',
     countryCode: 'GR',
     logoUrl: logo(98),
+    apiFootballId: 197,
     teamCount: 14,
   }),
   domestic('more', {
@@ -236,6 +261,7 @@ export const LEAGUES: readonly League[] = [
     country: 'Austria',
     countryCode: 'AT',
     logoUrl: logo(5),
+    apiFootballId: 218,
     teamCount: 12,
   }),
   domestic('more', {
@@ -244,6 +270,7 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Denmark',
     country: 'Denmark',
     countryCode: 'DK',
+    apiFootballId: 119,
     teamCount: 12,
   }),
   domestic('more', {
@@ -253,6 +280,7 @@ export const LEAGUES: readonly League[] = [
     country: 'Sweden',
     countryCode: 'SE',
     logoUrl: logo(16),
+    apiFootballId: 113,
     teamCount: 16,
   }),
   domestic('more', {
@@ -261,6 +289,7 @@ export const LEAGUES: readonly League[] = [
     shortName: 'Norway',
     country: 'Norway',
     countryCode: 'NO',
+    apiFootballId: 103,
     teamCount: 16,
   }),
   domestic('more', {
@@ -270,6 +299,7 @@ export const LEAGUES: readonly League[] = [
     country: 'Russia',
     countryCode: 'RU',
     logoUrl: logo(106),
+    apiFootballId: 235,
     teamCount: 16,
   }),
 ];

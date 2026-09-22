@@ -197,6 +197,14 @@ export default async function TeamPage({ params }: Props) {
                       <Link href={playerHref(league.slug, p.id)} className="hover:text-accent">
                         {p.name}
                       </Link>
+                      {p.injured && (
+                        <span
+                          className="ml-1.5 align-middle text-[10px] font-bold tracking-[0.08em] text-accent uppercase"
+                          title={t('injured')}
+                        >
+                          {t('injuredShort')}
+                        </span>
+                      )}
                     </td>
                     <td className="text-ink-3">
                       {p.position && t.has(`positionsShort.${p.position}` as never)
