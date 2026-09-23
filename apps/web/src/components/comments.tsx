@@ -14,6 +14,7 @@ import { useFormatter, useNow, useTranslations } from 'next-intl';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { initialsOf } from '@/lib/view';
 import { useAuthUi, useSessionUser } from './auth-dialog';
+import { ConfirmDialog } from './confirm-dialog';
 
 type ShownError = Exclude<CommentErrorCode, 'notFound'>;
 
@@ -127,9 +128,15 @@ export function Comments({
     },
   });
 
+  // The comment the reader is being asked about before it goes for good.
+  const [pendingDelete, setPendingDelete] = useState<MatchComment | null>(null);
+
   const remove = useMutation({
     mutationFn: (id: string) => client.remove(id),
-    onSuccess: (_data, id) => patch((list) => list.filter((c) => c.id !== id)),
+    onSuccess: (_data, id) => {
+      patch((list) => list.filter((c) => c.id !== id));
+      setPendingDelete(null);
+    },
     onError: fail,
   });
 
@@ -230,11 +237,11 @@ export function Comments({
                         now,
                       )}
                     </time>
-                    {mine && (
+                    {c.canDelete && (
                       <button
                         type="button"
                         className="cursor-pointer text-ink-3 hover:text-accent"
-                        onClick={() => remove.mutate(c.id)}
+                        onClick={() => setPendingDelete(c)}
                         disabled={remove.isPending}
                       >
                         {t('delete')}
@@ -266,6 +273,23 @@ export function Comments({
           })}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={t('confirmDeleteTitle')}
+        confirmLabel={t('delete')}
+        busyLabel={t('deleting')}
+        cancelLabel={t('cancel')}
+        busy={remove.isPending}
+        onConfirm={() => pendingDelete && remove.mutate(pendingDelete.id)}
+        onCancel={() => setPendingDelete(null)}
+      >
+        <p>
+          {pendingDelete && user?.id !== pendingDelete.author.id
+            ? t('confirmDeleteOther', { name: pendingDelete.author.name })
+            : t('confirmDeleteText')}
+        </p>
+      </ConfirmDialog>
     </div>
   );
 }

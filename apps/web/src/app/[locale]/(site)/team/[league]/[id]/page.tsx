@@ -173,50 +173,52 @@ export default async function TeamPage({ params }: Props) {
         <div className="max-w-[460px] min-w-0 flex-[1_1_300px]">
           <h2 className="pb-2.5 eyebrow">{t('squad')}</h2>
           {squad.length > 0 ? (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th scope="col" className="w-9">
-                    {t('number')}
-                  </th>
-                  <th scope="col">{t('player')}</th>
-                  <th scope="col">{t('position')}</th>
-                  <th scope="col" className="num">
-                    {t('goalsShort')}
-                  </th>
-                  <th scope="col" className="num">
-                    {t('assistsShort')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {squad.map((p) => (
-                  <tr key={p.id}>
-                    <td className="text-ink-3">{p.number ?? ''}</td>
-                    <td className="font-semibold">
-                      <Link href={playerHref(league.slug, p.id)} className="hover:text-accent">
-                        {p.name}
-                      </Link>
-                      {p.injured && (
-                        <span
-                          className="ml-1.5 align-middle text-[10px] font-bold tracking-[0.08em] text-accent uppercase"
-                          title={t('injured')}
-                        >
-                          {t('injuredShort')}
-                        </span>
-                      )}
-                    </td>
-                    <td className="text-ink-3">
-                      {p.position && t.has(`positionsShort.${p.position}` as never)
-                        ? t(`positionsShort.${p.position}` as never)
-                        : (p.position ?? '')}
-                    </td>
-                    <td className="num">{p.goals}</td>
-                    <td className="num">{p.assists}</td>
+            <div className="overflow-x-auto overflow-y-hidden">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th scope="col" className="w-9">
+                      {t('number')}
+                    </th>
+                    <th scope="col">{t('player')}</th>
+                    <th scope="col">{t('position')}</th>
+                    <th scope="col" className="num">
+                      {t('goalsShort')}
+                    </th>
+                    <th scope="col" className="num">
+                      {t('assistsShort')}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {squad.map((p) => (
+                    <tr key={p.id}>
+                      <td className="text-ink-3">{p.number ?? ''}</td>
+                      <td className="font-semibold">
+                        <Link href={playerHref(league.slug, p.id)} className="hover:text-accent">
+                          {p.name}
+                        </Link>
+                        {p.injured && (
+                          <span
+                            className="ml-1.5 align-middle text-[10px] font-bold tracking-[0.08em] text-accent uppercase"
+                            title={t('injured')}
+                          >
+                            {t('injuredShort')}
+                          </span>
+                        )}
+                      </td>
+                      <td className="text-ink-3">
+                        {p.position && t.has(`positionsShort.${p.position}` as never)
+                          ? t(`positionsShort.${p.position}` as never)
+                          : (p.position ?? '')}
+                      </td>
+                      <td className="num">{p.goals}</td>
+                      <td className="num">{p.assists}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <>
               <div className="rule-2" />

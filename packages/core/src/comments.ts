@@ -23,6 +23,11 @@ export interface MatchComment {
   votes: number;
   /** Whether the signed-in viewer has upvoted it. Always false for guests. */
   voted: boolean;
+  /**
+   * Whether the viewer may remove it: their own comment, or anyone's if they are staff. Decided
+   * by the server, which is also what enforces it; the client only uses this to show the button.
+   */
+  canDelete?: boolean;
 }
 
 /** Machine-readable failure reasons, so every client can show its own translated message. */

@@ -3,9 +3,9 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { deleteArticleAction } from '@/app/admin/actions';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import type { ArticleState } from '@/lib/articles';
 import { AdminTime } from './admin-time';
-import { ConfirmDialog } from './confirm-dialog';
 import { FilterChips } from './filter-chips';
 import { STATE_LABEL, STATE_TAG, type ArticleListItem } from './shared';
 

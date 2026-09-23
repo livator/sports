@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { CommentThread } from '@sports/core';
 import { NextResponse } from 'next/server';
+import { isAdmin } from './admin';
 import { error } from './api';
 import { CommentError, createComment, listComments } from './comments';
 import { getSession, isSameOrigin } from './session';
@@ -12,7 +13,7 @@ const NO_STORE = { 'Cache-Control': 'no-store' };
 export async function readThread(req: Request, thread: CommentThread): Promise<NextResponse> {
   try {
     const session = await getSession(req.headers).catch(() => null);
-    const comments = await listComments(thread, session?.user.id);
+    const comments = await listComments(thread, session?.user.id, isAdmin(session));
     return NextResponse.json({ comments }, { headers: NO_STORE });
   } catch (err) {
     console.error('[comments]', err);

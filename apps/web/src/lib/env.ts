@@ -15,7 +15,17 @@ export const env = {
     const key = process.env.API_FOOTBALL_KEY?.trim();
     return key ? key : undefined;
   },
+  /**
+   * Canonical links, the sitemap, robots.txt and e-mail links are all built from this, so an
+   * unset value in production would publish localhost addresses to search engines and send
+   * verification links nobody can open. Fail instead, loudly, on the first request that needs it.
+   */
   get appUrl(): string {
-    return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'http://localhost:3000';
+    const value = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '');
+    if (value) return value;
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('NEXT_PUBLIC_APP_URL must be set in production');
+    }
+    return 'http://localhost:3000';
   },
 };

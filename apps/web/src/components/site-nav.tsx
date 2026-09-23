@@ -16,6 +16,7 @@ const LINKS = [
     match: (p: string) => p.startsWith('/tables') || p.startsWith('/team'),
   },
   { href: '/players', key: 'players', match: (p: string) => p.startsWith('/player') },
+  { href: '/news', key: 'news', match: (p: string) => p.startsWith('/news') },
 ] as const;
 
 export function SiteNav() {

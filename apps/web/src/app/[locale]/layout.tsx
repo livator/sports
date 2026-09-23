@@ -24,21 +24,36 @@ export function generateStaticParams() {
 }
 
 /**
- * Every page here calls the sports-data provider or the database (even the footer alone does,
- * for its credit line), so none of it can be safely baked in at build time: scores, tables and
- * news would freeze as of the build and stay stale until the next deploy. This also means
- * `next build` never touches the data source, so it succeeds without an API key.
+ * Every page here calls the sports-data provider or the database, so none of it can be safely
+ * baked in at build time: scores, tables and news would freeze as of the build and stay stale
+ * until the next deploy. This also means `next build` never touches the data source, so it
+ * succeeds without an API key.
  */
 export const dynamic = 'force-dynamic';
+
+/** What Open Graph wants: language and region, not the bare language tag used in the address. */
+const OG_LOCALES: Record<string, string> = { en: 'en_US', ru: 'ru_RU', ro: 'ro_RO' };
 
 export async function generateMetadata({ params }: Pick<Props, 'params'>): Promise<Metadata> {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) return {};
   const t = await getTranslations({ locale, namespace: 'meta' });
+  const title = t('title');
+  const description = t('description');
   return {
     metadataBase: new URL(env.appUrl),
-    title: { default: t('title'), template: '%s | Pitchside' },
-    description: t('description'),
+    title: { default: title, template: '%s | Pitchside' },
+    description,
+    // Shared links are how most readers will arrive; a bare link shows nothing without these.
+    openGraph: {
+      type: 'website',
+      siteName: 'Pitchside',
+      title,
+      description,
+      locale: OG_LOCALES[locale] ?? locale,
+      alternateLocale: routing.locales.filter((l) => l !== locale).map((l) => OG_LOCALES[l] ?? l),
+    },
+    twitter: { card: 'summary_large_image', title, description },
   };
 }
 

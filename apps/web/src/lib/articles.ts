@@ -348,6 +348,26 @@ export async function getLiveArticle(id: string, locale: Locale): Promise<NewsAr
   return row ? toNewsArticle(row, locale) : null;
 }
 
+/** Every live article, for the sitemap: the address and when it last changed. */
+export async function listArticleSitemapEntries(): Promise<
+  Array<{ id: string; lastModified: Date }>
+> {
+  await dbReady();
+  const rows = await getDb()
+    .select({
+      id: article.id,
+      publishedAt: article.publishedAt,
+      updatedAt: article.updatedAt,
+    })
+    .from(article)
+    .where(live(new Date()))
+    .orderBy(desc(article.publishedAt));
+  return rows.map((row) => ({
+    id: row.id,
+    lastModified: row.updatedAt ?? row.publishedAt ?? new Date(),
+  }));
+}
+
 /** Counts one read of a live article. Anything else is ignored. */
 export async function countView(id: string): Promise<void> {
   await dbReady();

@@ -43,7 +43,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, id } = await params;
   const article = await load(id, locale);
   if (article && article !== 'unsupported') {
-    return { title: article.title, description: article.summary };
+    return {
+      title: article.title,
+      description: article.summary,
+      openGraph: {
+        type: 'article',
+        title: article.title,
+        description: article.summary,
+        publishedTime: article.publishedAt,
+        ...(article.author ? { authors: [article.author] } : {}),
+        ...(article.imageUrl ? { images: [article.imageUrl] } : {}),
+      },
+    };
   }
   const t = await getTranslations({ locale, namespace: 'news' });
   return { title: t('fallbackTitle') };

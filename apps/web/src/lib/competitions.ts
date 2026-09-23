@@ -69,8 +69,9 @@ type CompetitionTranslator = {
 };
 
 /**
- * UEFA and national-team competitions have translated names ("Liga Campionilor").
- * Domestic leagues are proper nouns and keep their own ("Eredivisie", "Süper Lig").
+ * A competition's name in the reader's language ("Liga Campionilor", "Суперлига Греции"). Every
+ * competition has one: a Russian page writes even the proper nouns in Cyrillic, and the short
+ * form is usually the country, which translates too. Falls back to the source's own name.
  * Pass a translator for the `competitions` namespace.
  */
 export function competitionName(league: League, t: CompetitionTranslator, short = false): string {

@@ -9,6 +9,8 @@ import { useEffect, useId, useRef, type ReactNode } from 'react';
  *
  * Focus starts on Cancel, so a stray Enter never confirms. While the action runs, the dialog
  * stays open and cannot be dismissed, and a failure is shown inside it.
+ *
+ * Labels are passed in: the admin console is English, the public site is in three languages.
  */
 export function ConfirmDialog({
   open,
@@ -16,6 +18,7 @@ export function ConfirmDialog({
   children,
   confirmLabel,
   busyLabel,
+  cancelLabel = 'Cancel',
   busy = false,
   error,
   onConfirm,
@@ -27,6 +30,7 @@ export function ConfirmDialog({
   children: ReactNode;
   confirmLabel: string;
   busyLabel: string;
+  cancelLabel?: string;
   busy?: boolean;
   error?: string | null;
   onConfirm: () => void;
@@ -79,7 +83,7 @@ export function ConfirmDialog({
             disabled={busy}
             autoFocus
           >
-            Cancel
+            {cancelLabel}
           </button>
           <button type="button" className="btn btn-primary" onClick={onConfirm} disabled={busy}>
             {busy ? busyLabel : confirmLabel}

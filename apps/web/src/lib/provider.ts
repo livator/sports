@@ -8,7 +8,7 @@ import {
   type SportsDataProvider,
 } from '@sports/core';
 import { notFound } from 'next/navigation';
-import { env } from './env';
+import { type DataProviderName, env } from './env';
 
 let instance: SportsDataProvider | undefined;
 
@@ -78,13 +78,24 @@ export function getProvider(): SportsDataProvider {
   return instance;
 }
 
-/** The source behind the provider, for crediting it in the footer. */
+/** Provider names, as each provider reports its own, keyed by the setting that selects it. */
+const SOURCE_NAMES: Record<DataProviderName, string> = {
+  'api-football': 'api-football',
+  'football-data': 'football-data.org',
+  mock: 'mock',
+};
+
+/**
+ * The source behind the provider, for crediting it in the footer. Read from the setting rather
+ * than the instance: this runs in the root layout, where building a provider without its key
+ * would throw and take down every page instead of one section.
+ */
 export function dataSources(): readonly string[] {
-  return [getProvider().name];
+  return [SOURCE_NAMES[env.dataProvider]];
 }
 
 export function isDemoData(): boolean {
-  return getProvider().name === 'mock';
+  return env.dataProvider === 'mock';
 }
 
 /**

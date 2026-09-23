@@ -36,10 +36,14 @@ function where(thread: CommentThread) {
     : and(eq(comment.scope, NEWS_SCOPE), eq(comment.threadId, thread.articleId));
 }
 
-/** Newest first. `viewerId` marks which comments the signed-in user has upvoted. */
+/**
+ * Newest first. `viewerId` marks which comments the signed-in user has upvoted, and which they
+ * may delete; an admin viewer may delete any of them.
+ */
 export async function listComments(
   thread: CommentThread,
   viewerId?: string,
+  viewerIsAdmin = false,
 ): Promise<MatchComment[]> {
   await dbReady();
   const rows = await getDb()
@@ -72,6 +76,7 @@ export async function listComments(
     },
     votes: Number(r.votes),
     voted: Number(r.voted) === 1,
+    ...(viewerId && (viewerIsAdmin || r.authorId === viewerId) ? { canDelete: true } : {}),
   }));
 }
 
@@ -126,15 +131,22 @@ export async function createComment(input: {
   };
 }
 
-/** Deletes a comment (and its votes) only when it belongs to `userId`. */
-export async function deleteComment(id: string, userId: string): Promise<void> {
+/**
+ * Deletes a comment and its votes. Authors may delete their own; an admin may delete any, which
+ * is the only way to take an abusive comment down (suspending its author leaves it in place).
+ */
+export async function deleteComment(
+  id: string,
+  userId: string,
+  { asAdmin = false }: { asAdmin?: boolean } = {},
+): Promise<void> {
   await dbReady();
   const db = getDb();
-  const [own] = await db
+  const [target] = await db
     .select({ id: comment.id })
     .from(comment)
-    .where(and(eq(comment.id, id), eq(comment.userId, userId)));
-  if (!own) throw new CommentError('notFound', 404);
+    .where(asAdmin ? eq(comment.id, id) : and(eq(comment.id, id), eq(comment.userId, userId)));
+  if (!target) throw new CommentError('notFound', 404);
   // Explicit, so it holds even where SQLite foreign keys are switched off.
   await db.delete(commentVote).where(eq(commentVote.commentId, id));
   await db.delete(comment).where(eq(comment.id, id));

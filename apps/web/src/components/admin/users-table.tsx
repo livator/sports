@@ -3,10 +3,10 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { setSuspendedAction } from '@/app/admin/actions';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import type { AdminUser, AdminUserComment } from '@/lib/admin-data';
 import { initialsOf } from '@/lib/admin-format';
 import { AdminTime } from './admin-time';
-import { ConfirmDialog } from './confirm-dialog';
 import { FilterChips } from './filter-chips';
 
 type Filter = 'all' | 'active' | 'new' | 'suspended';

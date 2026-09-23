@@ -83,8 +83,9 @@ so a Champions League night leads the scoreboard with no special casing.
 
 - Everything is configured in `packages/core/src/leagues.ts`. To add a competition: add its slug
   to `LeagueSlug`, an entry to `LEAGUES`, and its api-football league id (`apiFootballId`).
-  UEFA and national-team names are translated in
-  `@sports/i18n` (`competitions.names`); domestic league names are proper nouns and are not.
+  Every competition's name is translated in `@sports/i18n` (`competitions.names`, and
+  `competitions.short` for the compact label), including the domestic ones: a Russian page
+  writes even the proper nouns in Cyrillic, and the short label is usually the country.
 - Pickers are two-level (category, then competition) so they fit a phone. `?league=` accepts a
   category key (`uefa`) or a competition slug (`champions-league`).
 - **Zones fall back to configured data.** `League.zones` gives qualification and relegation
@@ -250,17 +251,22 @@ and libSQL.
 
 Set these, or accounts will not work:
 
-| Variable                | Why                                                                               |
-| ----------------------- | --------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_APP_URL`   | Base URL for email links, auth redirects, trusted origins, the sitemap.           |
-| `BETTER_AUTH_SECRET`    | Signs sessions. Auth routes fail loudly without it.                               |
-| `DATABASE_URL` (+token) | A hosted libSQL/Turso database. A local file does not survive serverless deploys. |
-| `SMTP_*`, `EMAIL_FROM`  | Real email delivery. Sign-up refuses to run without it in production.             |
+| Variable                | Why                                                                                                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_APP_URL`   | Base URL for email links, auth redirects, trusted origins, the sitemap. Reading it in production without it set throws, rather than publishing localhost addresses. |
+| `BETTER_AUTH_SECRET`    | Signs sessions. Auth routes fail loudly without it.                                                                                                                 |
+| `DATABASE_URL` (+token) | A hosted libSQL/Turso database. A local file does not survive serverless deploys.                                                                                   |
+| `SMTP_*`, `EMAIL_FROM`  | Real email delivery. Sign-up refuses to run without it in production.                                                                                               |
 
 The sign-in rate limiter keeps its counters in memory, which is per server instance. Behind
 several instances, give better-auth a shared store.
 
-Not built yet: password reset, changing email or display name, comment moderation and reporting.
+An admin can delete any comment, from the thread itself: the Delete link shows on every comment
+for a signed-in admin, and asks before it removes one. Suspending an account does not take down
+what it already wrote, so that link is the way to deal with an abusive comment.
+
+Not built yet: password reset, changing email or display name, reporting a comment, a moderation
+queue, and the About / Contact / Privacy / Terms pages.
 
 ## Security
 
