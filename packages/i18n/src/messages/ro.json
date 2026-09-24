@@ -298,7 +298,6 @@
     "placeholder": "Spune ceva despre meci…",
     "label": "Comentariul tău",
     "postingAs": "Publici ca {name}",
-    "guestHint": "Scrie acum. Ți se va cere să te autentifici când publici.",
     "post": "Publică",
     "posting": "Se publică…",
     "empty": "Încă nu sunt comentarii. Fii primul.",
@@ -414,7 +413,17 @@
     "comments": "Comentarii ({count})",
     "commentsClosed": "Comentariile sunt închise pentru acest articol.",
     "by": "De {author}",
-    "seeMore": "Mai multe știri"
+    "seeMore": "Mai multe știri",
+    "tags": {
+      "match-report": "Cronică",
+      "preview": "Avancronică",
+      "transfers": "Transferuri",
+      "rumours": "Zvonuri",
+      "injuries": "Accidentări",
+      "interview": "Interviu",
+      "analysis": "Analiză",
+      "opinion": "Opinie"
+    }
   },
   "clubs": {
     "title": "Echipele tale",

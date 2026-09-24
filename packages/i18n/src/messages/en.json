@@ -298,7 +298,6 @@
     "placeholder": "Say something about the match…",
     "label": "Your comment",
     "postingAs": "Posting as {name}",
-    "guestHint": "Write now. You’ll be asked to log in when you post.",
     "post": "Post comment",
     "posting": "Posting…",
     "empty": "No comments yet. Be the first.",
@@ -414,7 +413,17 @@
     "comments": "Comments ({count})",
     "commentsClosed": "Comments are closed for this article.",
     "by": "By {author}",
-    "seeMore": "See more news"
+    "seeMore": "See more news",
+    "tags": {
+      "match-report": "Match report",
+      "preview": "Preview",
+      "transfers": "Transfers",
+      "rumours": "Rumours",
+      "injuries": "Injuries",
+      "interview": "Interview",
+      "analysis": "Analysis",
+      "opinion": "Opinion"
+    }
   },
   "clubs": {
     "title": "Your clubs",

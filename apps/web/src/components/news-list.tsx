@@ -2,16 +2,22 @@ import { LEAGUES, type NewsArticle } from '@sports/core';
 import { useFormatter, useNow, useTranslations } from 'next-intl';
 import { NewsLink } from './news-link';
 import { Link } from '@/i18n/navigation';
+import { articleTag } from '@/lib/article-tags';
 import { competitionName } from '@/lib/competitions';
 
-/** Competition name when we know it, the publisher's own label otherwise. */
+/**
+ * "PL · Transfers": the competition's short name when we know it, then the tag in the
+ * viewer's language. An old free-text tag is shown as written.
+ */
 export function useNewsTag(): (article: NewsArticle) => string {
   const t = useTranslations('news');
   const tc = useTranslations('competitions');
   return (article) => {
     const league = LEAGUES.find((l) => l.slug === article.leagueSlug);
-    const base = league ? competitionName(league, tc) : (article.tag ?? t('football'));
-    return article.label ? `${base} · ${article.label}` : base;
+    const base = league ? competitionName(league, tc, true) : (article.tag ?? t('football'));
+    const key = articleTag(article.label);
+    const tag = key ? t(`tags.${key}`) : article.label;
+    return tag ? `${base} · ${tag}` : base;
   };
 }
 
@@ -62,7 +68,7 @@ export function NewsList({
             active={article.id === activeId}
             {...(thumbnails ? { thumbnailUrl: article.imageUrl ?? null } : {})}
           >
-            <span className="mb-1.5 flex flex-wrap gap-x-2.5 text-[11px] tracking-[0.08em] uppercase">
+            <span className="mb-1 flex flex-wrap gap-x-2 text-[10px] tracking-[0.06em] uppercase">
               <span className="font-semibold text-accent-700">{tagOf(article)}</span>
               <time dateTime={article.publishedAt} className="text-ink-3">
                 {format.relativeTime(new Date(article.publishedAt), now)}

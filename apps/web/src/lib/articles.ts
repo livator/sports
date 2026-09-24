@@ -5,6 +5,7 @@ import { LOCALES, LOCALE_NAMES, type Locale } from '@sports/i18n';
 import { and, count, desc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';
 import { dbReady, getDb, schema } from '@/db';
+import { articleTag } from './article-tags';
 import { NEWS_SCOPE } from './comments';
 import { env } from './env';
 import { deleteUpload, isUploadPath } from './uploads';
@@ -63,6 +64,9 @@ export class ArticleInputError extends Error {
 }
 
 const text = (value: unknown) => (typeof value === 'string' ? value : '');
+
+/** A tag from the list is stored as its key; an old free-text tag is kept as written. */
+const normalizeTag = (value: string) => articleTag(value) ?? value;
 
 /**
  * Turns whatever the editor form sent into a clean `ArticleInput`, or throws naming the field
@@ -139,7 +143,7 @@ export function parseArticleInput(raw: Record<string, unknown>): ArticleInput {
 
   return {
     leagueSlug: league && isLeagueSlug(league) ? league : null,
-    tag: shared('tag', 'The tag'),
+    tag: normalizeTag(shared('tag', 'The tag')),
     title,
     summary,
     body,

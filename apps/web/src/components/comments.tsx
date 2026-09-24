@@ -180,22 +180,21 @@ export function Comments({
             onChange={(e) => updateDraft(e.target.value)}
             maxLength={COMMENT_MAX_LENGTH * 2}
           />
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <button type="submit" className="btn btn-primary" disabled={post.isPending}>
+              {post.isPending ? t('posting') : t('post')}
+            </button>
             <span className="text-[13px] text-ink-2">
-              {!user
-                ? t('guestHint')
-                : justLoggedIn && draft.trim()
+              {user &&
+                (justLoggedIn && draft.trim()
                   ? t('loggedInHint', { name: user.name })
-                  : t('postingAs', { name: user.name })}
+                  : t('postingAs', { name: user.name }))}
               {remaining <= 100 && (
                 <span className={`ml-2 tnum ${remaining < 0 ? 'text-accent-700' : 'text-ink-3'}`}>
                   {t('remaining', { count: remaining })}
                 </span>
               )}
             </span>
-            <button type="submit" className="btn btn-primary" disabled={post.isPending}>
-              {post.isPending ? t('posting') : t('post')}
-            </button>
           </div>
           {error && (
             <p role="alert" className="text-[13px] text-accent-700">

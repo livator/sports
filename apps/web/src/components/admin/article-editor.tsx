@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { saveArticleAction } from '@/app/admin/actions';
 import { formatDayTime, toLocalInputValue } from '@/lib/admin-format';
+import { ARTICLE_TAG_NAMES, ARTICLE_TAGS, articleTag } from '@/lib/article-tags';
 import type { ArticleField, ArticleState } from '@/lib/articles';
 import { GENERAL, sectionLabel, STATE_LABEL } from './shared';
 
@@ -29,7 +30,7 @@ export interface EditorArticle {
 const EMPTY_LOCALIZED: Record<Locale, string> = { en: '', ru: '', ro: '' };
 
 /** Mirrors ARTICLE_LIMITS on the server, which has the final say. */
-const LIMITS = { title: 160, summary: 400, body: 20_000, tag: 40, author: 80, caption: 200 };
+const LIMITS = { title: 160, summary: 400, body: 20_000, author: 80, caption: 200 };
 const WORDS_PER_MINUTE = 220;
 
 /** A photo uploaded here ("/uploads/…") or an https address, as the server will accept it. */
@@ -55,7 +56,7 @@ export function ArticleEditor({
   const [savedAt, setSavedAt] = useState(article?.updatedAt ?? null);
   const [fields, setFields] = useState({
     leagueSlug: article?.leagueSlug ?? '',
-    tag: article?.tag ?? '',
+    tag: articleTag(article?.tag) ?? article?.tag ?? '',
     title: article?.title ?? EMPTY_LOCALIZED,
     summary: article?.summary ?? EMPTY_LOCALIZED,
     body: article?.body ?? EMPTY_LOCALIZED,
@@ -272,14 +273,23 @@ export function ArticleEditor({
             </div>
             <div className="field">
               <label htmlFor="a-tag">Tag</label>
-              <input
+              <select
                 id="a-tag"
                 className="input"
-                placeholder="e.g. Match report"
-                maxLength={LIMITS.tag}
                 value={fields.tag}
                 onChange={(e) => set('tag', e.target.value)}
-              />
+              >
+                <option value="">None</option>
+                {ARTICLE_TAGS.map((key) => (
+                  <option key={key} value={key}>
+                    {ARTICLE_TAG_NAMES[key]}
+                  </option>
+                ))}
+                {/* A free-text tag from before the list, kept until another is picked. */}
+                {fields.tag && !articleTag(fields.tag) && (
+                  <option value={fields.tag}>{fields.tag}</option>
+                )}
+              </select>
             </div>
           </div>
           <div className="flex gap-x-[18px] border-b" role="tablist" aria-label="Language">

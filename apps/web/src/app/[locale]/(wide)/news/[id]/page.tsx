@@ -9,6 +9,7 @@ import { NewsList } from '@/components/news-list';
 import { BackLink } from '@/components/page-header';
 import { PendingRegion } from '@/components/pending-nav';
 import { ViewBeacon } from '@/components/view-beacon';
+import { articleTag } from '@/lib/article-tags';
 import { competitionName } from '@/lib/competitions';
 import { countComments } from '@/lib/comments';
 import { getAnyArticle, getNewsFeed, isArticleId } from '@/lib/news';
@@ -86,7 +87,9 @@ export default async function ArticlePage({ params }: Props) {
   // feeds, so this is nearly always served from cache.
   const more = await getNewsFeed(league ? [league.slug] : [], MORE_NEWS, locale);
   const section = league ? competitionName(league, tc) : (article.tag ?? t('football'));
-  const tag = article.label ? `${section} · ${article.label}` : section;
+  const tagKey = articleTag(article.label);
+  const label = tagKey ? t(`tags.${tagKey}`) : article.label;
+  const tag = label ? `${section} · ${label}` : section;
   // Only articles written in our own console have a body; see NewsArticle.
   const own = article.body !== undefined;
   const paragraphs = (article.body ?? '').split(/\n\s*\n/).filter((p) => p.trim());

@@ -1,4 +1,4 @@
-import { isLive, type Match, type MatchEvent, type Team } from '@sports/core';
+import type { Match, MatchEvent, Team } from '@sports/core';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { matchHref, scoreText, sideWeight, statusLabel, statusTone, toneClass } from '@/lib/view';
@@ -93,12 +93,7 @@ export function MatchRow({ match, showDate = false }: { match: Match; showDate?:
             <LocalTime iso={match.kickoff} />
           </>
         ) : (
-          <span className="inline-flex items-center gap-1.5">
-            {isLive(match.status) && (
-              <span aria-hidden className="size-1.5 flex-none animate-pulse-live bg-accent" />
-            )}
-            {statusLabel(match, ts)}
-          </span>
+          statusLabel(match, ts)
         )}
       </span>
       <Side
